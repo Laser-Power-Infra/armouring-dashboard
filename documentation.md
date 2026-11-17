@@ -76,8 +76,8 @@ Armour wire/strip is spooled in parallel onto 500 DIN bobbins on GI Opening mach
 | Layer | Choice | Notes |
 |---|---|---|
 | Framework | **Next.js 16** (App Router, TypeScript strict) | Use React Server Components for data reads. In Next 16, `middleware.ts` is renamed **`proxy.ts`**, and `params`/`searchParams`/`cookies()` are async. **Check the current Next.js 16 docs before scaffolding.** |
-| DB | **Postgres on Neon** | Use the `@neondatabase/serverless` driver |
-| ORM / migrations | **Drizzle ORM + drizzle-kit** | Lightweight, works well with Neon serverless, SQL-first. Views are defined in SQL migrations |
+| DB | **Postgres on Neon** | Accessed through Prisma (use `@prisma/adapter-neon` if serverless connections become a problem) |
+| ORM / migrations | **Prisma** (`prisma migrate`) | Neon via `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (migrations). Views are defined in SQL migrations (`prisma migrate dev --create-only`, then add the SQL) |
 | Validation | **zod** | For every loader input and API body |
 | Server state (client) | **TanStack Query** | Only for client-side polling/refetch ("Refresh" button, auto refetch every 5 min). Initial data comes from RSC |
 | UI state | **Zustand** (recommended over Redux) | State is small: selected machine, selected date, table sort, collapsed sections. Redux Toolkit would be overkill. Do **not** put server data in Zustand |
@@ -268,7 +268,7 @@ Same-day attendance comes from the biometric punch data (EMP DAILY ATTENDANCE PU
 
 ## 5. Database schema (Neon Postgres)
 
-Implement this with Drizzle. The names are the contract between the loaders, the views and the UI.
+Implement this with Prisma. The names are the contract between the loaders, the views and the UI.
 
 ### 5.1 Conventions
 
@@ -851,7 +851,7 @@ app/
     jobs/alerts/route.ts
     jobs/report-6h/route.ts             # phase 3
 db/
-  schema.ts                             # drizzle tables (§5)
+  schema.prisma                         # Prisma models (§5)
   views/*.sql                           # v_daily_output, v_labour_daily, v_feed, v_upstream, v_bobbins, v_pending ...
   migrations/
   seed.ts                               # settings, machine_alias, users
@@ -958,7 +958,7 @@ From handover §9 and §10.2:
 
 | Phase | Deliverable | Done when |
 |---|---|---|
-| **0 – Setup** | Next 16 app, Drizzle + Neon, Auth.js Google (domain-restricted), settings seed, Sheets client with header mapper, runner + refresh_log, `/admin/refresh-log` | Login works; a dummy loader runs from n8n |
+| **0 – Setup** | Next 16 app, Prisma + Neon, Auth.js Google (domain-restricted), settings seed, Sheets client with header mapper, runner + refresh_log, `/admin/refresh-log` | Login works; a dummy loader runs from n8n |
 | **1 – Sheets data** | Loaders: lots, bobbinlog, bobstatus, owned, itemmaster, inner, sfgstock, machines, itemroute, orderroute, rundaily, prodlots, otherarm. Blocks **1, 2–5, 8, 9** (fallback), stale labels, colours | Values match the Claude dashboard for these blocks |
 | **2 – SFG data** | `SfgClient` HTTP implementation, loaders grid, labour, orders, stock, deadstock (built first against the snapshot SfgClient). Blocks **H, Production by stage, 7, Daily chart, Latest entries**; switch block 9 to order_lines | Parallel run starts |
 | **3 – Alerts & reports** | Alert evaluator + Urgent WhatsApp send + escalation; 6-hourly report; print card with version | Alerts fire in test |
