@@ -1,17 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  armouringPending,
-  avgPerWorkingDay,
-  bobbinPool,
-  bobbinTotals,
-  dailyOutput,
-  lastShiftDays,
-  lengthFromTurns,
-  shiftDayOf,
-  summariseOrders,
-  waitingBetween,
-  waitingForLaying,
-} from "../../lib/dashboard/calc";
+import { avgPerWorkingDay, bobbinPool, bobbinTotals, dailyOutput, lastShiftDays, lengthFromTurns, shiftDayOf } from "../../lib/dashboard/calc";
+import { armouringPending, summariseOrders, waitingBetween, waitingForLaying } from "../fixtures/order-rules";
 import { kgpLines } from "../fixtures/order-lines";
 
 
@@ -26,7 +15,8 @@ describe("shift day (md §7.1)", () => {
   });
 });
 
-describe("waiting cable (md §5 blocks 1–5)", () => {
+// The reference rules the Postgres views are proved against.
+describe("waiting cable reference rules (md §5 blocks 1–5)", () => {
   const orders = summariseOrders(kgpLines);
 
   it("inner done minus armouring done, biggest first, drops zero, negative and under half a metre", () => {

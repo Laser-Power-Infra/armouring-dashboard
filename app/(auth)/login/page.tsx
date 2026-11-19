@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { googleEnabled, signIn } from "@/auth";
-import { AuthShell, Field, FormError, inputClass, primaryButton, secondaryButton } from "@/components/auth-shell";
+import { AuthShell, FormError } from "@/components/auth-shell";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 
 // Reads searchParams at request time; render on the server instead of prerendering a shell.
 export const instant = false;
@@ -47,18 +49,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           }}
         >
           <Field label="Email">
-            <input name="email" type="email" required autoComplete="email" className={inputClass} />
+            <Input name="email" type="email" required autoComplete="email" />
           </Field>
           <Field label="Password">
-            <input name="password" type="password" required autoComplete="current-password" className={inputClass} />
+            <Input name="password" type="password" required autoComplete="current-password" />
           </Field>
-          <button type="submit" className={primaryButton}>
+          <Button type="submit" variant="primary" className="h-10 w-full">
             Sign in
-          </button>
+          </Button>
         </form>
         {googleEnabled && (
           <>
-            <div className="flex items-center gap-3 text-[13px] text-ink-3" aria-hidden>
+            <div className="flex items-center gap-3 text-label text-ink-2" aria-hidden>
               <span className="h-px flex-1 bg-line" />
               or
               <span className="h-px flex-1 bg-line" />
@@ -69,7 +71,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 await signIn("google", { redirectTo });
               }}
             >
-              <button type="submit" className={secondaryButton}>
+              <Button type="submit" className="h-10 w-full">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
                   <path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.3-4.8 3.3-8Z" />
                   <path
@@ -80,13 +82,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                   <path fill="#EA4335" d="M12 5.4c1.6 0 3 .6 4.2 1.6l3.1-3.1A11 11 0 0 0 2.1 7.1l3.7 2.8C6.7 7.3 9.1 5.4 12 5.4Z" />
                 </svg>
                 Continue with Google
-              </button>
+              </Button>
             </form>
           </>
         )}
-        <p className="text-center text-[14px] text-ink-2">
+        <p className="text-center text-label text-ink-2">
           New here?{" "}
-          <Link href="/signup" className="font-medium text-accent">
+          <Link href="/signup" className="font-medium text-primary">
             Create an account
           </Link>
         </p>

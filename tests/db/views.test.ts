@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../lib/generated/prisma/client.ts";
-import { armouringPending, summariseOrders, waitingBetween, waitingForLaying } from "../../lib/dashboard/calc";
+import { armouringPending, summariseOrders, waitingBetween, waitingForLaying } from "../fixtures/order-rules";
 import { kgpLines, parityLines, PLANNED_CABLE } from "../fixtures/order-lines";
 import { TABLES } from "../../lib/tables/defs";
 import { defaultParams } from "../../lib/tables/params";
 import { fetchFacet, fetchRows } from "../../lib/tables/query";
+import { entryDays, hasOrders, pendingTotals, waitingTotals } from "../../lib/dashboard/totals";
+import { sumKm } from "../../lib/dashboard/calc";
 
 // Proof that the Postgres views give the same rows and km as the TypeScript rules.
 // Needs a throwaway database: this file deletes rows.
@@ -163,5 +165,40 @@ describe.skipIf(!url)("database: views match calc.ts, tables page in SQL", () =>
     const lots = TABLES.lots;
     const { rows } = await fetchRows(lots, defaultParams(lots, "ARM5"), env);
     expect(rows).toEqual([expect.objectContaining({ lotNo: "L1", bobbinsNeeded: 10, bobbinsWound: 0, balance: 10, approved: false })]);
+  });
+  // ── Block totals come from the same views as the tables, so a tile cannot disagree with its list ──
+  it("waiting totals: km and order count per step equal the rules' lists", async () => {
+    const got = await waitingTotals(db);
+    const want = {
+      insulation: waitingBetween(orders, "CONDUCTOR", "INSULATION"),
+      laying: waitingForLaying(orders),
+      inner: waitingBetween(orders, "LAYING", "INNER_SHEATH"),
+      armouring: waitingBetween(orders, "INNER_SHEATH", "ARMOURING"),
+      outer: waitingBetween(orders, "ARMOURING", "OUTER_SHEATH"),
+    };
+    for (const [step, rows] of Object.entries(want)) {
+      expect(got[step as keyof typeof got].count, step).toBe(rows.length);
+      expect(got[step as keyof typeof got].km, step).toBeCloseTo(sumKm(rows), 3);
+    }
+  });
+  it("pending totals: total, count, not in plan, not approved", async () => {
+    const rows = armouringPending(orders);
+    const got = await pendingTotals(db);
+    expect(got.count).toBe(rows.length);
+    expect(got.total).toBeCloseTo(sumKm(rows), 3);
+    expect(got.notInPlan).toBeCloseTo(sumKm(rows.filter((r) => r.cable !== PLANNED_CABLE)), 3);
+    expect(got.notApproved).toBeCloseTo(sumKm(rows.filter((r) => !r.approved)), 3);
+    expect(got.plannedApproved).toBeCloseTo(sumKm(rows.filter((r) => r.cable === PLANNED_CABLE && r.approved)), 3);
+    expect(got.plannedNotApproved).toBeCloseTo(sumKm(rows.filter((r) => r.cable === PLANNED_CABLE && !r.approved)), 3);
+    expect(got.plannedApproved + got.plannedNotApproved + got.notInPlan).toBeCloseTo(got.total, 3);
+  });
+  it("hasOrders is true once Kharagpur lines are loaded", async () => {
+    expect(await hasOrders(db)).toBe(true);
+  });
+  it("entry days: metres per shift day leave duplicates out, newest day first", async () => {
+    expect(await entryDays(db, "ARM5", env.since)).toEqual([
+      { day: "2026-11-18", metres: 1200, entries: 2, duplicates: 0 },
+      { day: "2026-11-17", metres: 0, entries: 1, duplicates: 1 },
+    ]);
   });
 });

@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { auth, signOut } from "@/auth";
 import { getMachines, machineLabel } from "@/lib/dashboard/data";
-import { SectionSkeleton } from "@/components/dash/section";
 import { BlockBoundary } from "@/components/dash/block-boundary";
 import { MachinePicker, RefreshButton } from "@/components/dash/top-bar-controls";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/feedback";
+import { Popover } from "@/components/ui/popover";
 import { Summary } from "./_blocks/summary";
 import { Pipeline } from "./_blocks/pipeline";
 import { CableReady, Upstream } from "./_blocks/waiting";
@@ -25,6 +27,8 @@ const jump = [
   { href: "#entries", label: "Entries" },
 ];
 
+const jumpLink = "inline-flex h-8 shrink-0 items-center rounded-control px-2.5 text-label text-ink-2 hover:bg-ground hover:text-ink";
+
 export default async function DashboardPage({ params }: { params: Promise<{ machine: string }> }) {
   // Live data and an optional session: render at request time (auth uses crypto, which cannot run in a prerender).
   await connection();
@@ -39,36 +43,34 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
 
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-line/70 bg-bg/80 backdrop-blur-xl backdrop-saturate-150">
-        <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-3 px-4 sm:px-6">
-          <span className="text-[15px] font-semibold tracking-[-0.01em]">Kharagpur</span>
+      {/* Translucent bar: content scrolls under it. Solid for readers who ask for less transparency. */}
+      <header className="sticky top-0 z-20 border-b border-line-2 bg-surface/75 backdrop-blur-xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-surface [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none">
+        <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
+          <span className="text-body font-semibold">Kharagpur</span>
           <MachinePicker current={machineCode} machines={machines} />
           <nav aria-label="Jump to" className="ml-2 hidden gap-1 md:flex">
             {jump.map((j) => (
-              <a key={j.href} href={j.href} className="rounded-full px-3 py-1.5 text-[14px] text-ink-2 hover:bg-surface-2 hover:text-ink">
+              <a key={j.href} href={j.href} className={jumpLink}>
                 {j.label}
               </a>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
             <RefreshButton />
             {!session ? (
-              <Link href="/login" className="rounded-full bg-ink px-3.5 py-1.5 text-[14px] font-medium text-surface hover:opacity-90">
+              <Link href="/login" className={buttonClass("secondary")}>
                 Sign in
               </Link>
             ) : (
-              <details className="relative">
-                <summary
-                  className="grid size-8 place-items-center rounded-full bg-ink text-[13px] font-semibold uppercase text-surface"
-                  aria-label={`Account: ${name}`}
-                >
+              <>
+                <Button popoverTarget="account-menu" aria-label={`Account: ${name}`} className="w-9 px-0 uppercase">
                   {name.slice(0, 1) || "?"}
-                </summary>
-                <div className="absolute right-0 top-10 w-60 rounded-2xl border border-line bg-surface p-2 shadow-xl">
-                  <div className="px-3 py-2">
-                    <div className="truncate text-[14px] font-medium">{session.user?.name ?? "Signed in"}</div>
-                    <div className="truncate text-[12px] text-ink-2">{session.user?.email}</div>
-                    <div className="mt-1 text-[12px] capitalize text-ink-3">{session.user?.role}</div>
+                </Button>
+                <Popover id="account-menu">
+                  <div className="px-2 py-1.5">
+                    <div className="truncate text-label font-medium">{session.user?.name ?? "Signed in"}</div>
+                    <div className="truncate text-caption font-normal text-ink-2">{session.user?.email}</div>
+                    <div className="mt-1 text-caption font-normal capitalize text-ink-2">{session.user?.role}</div>
                   </div>
                   <form
                     action={async () => {
@@ -76,27 +78,27 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
                       await signOut({ redirectTo: "/dashboard/arm5" });
                     }}
                   >
-                    <button type="submit" className="w-full rounded-xl px-3 py-2 text-left text-[14px] text-critical hover:bg-surface-2">
+                    <button type="submit" className="flex h-8 w-full items-center rounded-control px-2 text-left text-label text-critical hover:bg-ground">
                       Sign out
                     </button>
                   </form>
-                </div>
-              </details>
+                </Popover>
+              </>
             )}
           </div>
         </div>
         {/* phones: the jump links scroll sideways under the bar */}
         <nav aria-label="Jump to" className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden">
           {jump.map((j) => (
-            <a key={j.href} href={j.href} className="shrink-0 rounded-full bg-surface px-3 py-1 text-[13px] text-ink-2">
+            <a key={j.href} href={j.href} className={jumpLink}>
               {j.label}
             </a>
           ))}
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-[1240px] flex-1 space-y-4 px-4 pb-16 pt-6 sm:px-6">
-        <Block title="Summary" tall>
+      <main className="mx-auto w-full max-w-[1200px] flex-1 space-y-6 px-4 pb-16 pt-8 sm:px-6">
+        <Block title="Summary" bare>
           <Summary machineCode={machineCode} />
         </Block>
         <Block title="Cable waiting along the line">
@@ -106,16 +108,14 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
           <CableReady machineCode={machineCode} />
         </Block>
         <Block title="Cable waiting at earlier steps">
-          <Upstream />
+          <Upstream machineCode={machineCode} />
         </Block>
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Block title="Output by step">
-            <StageOutput machineCode={machineCode} />
-          </Block>
-          <Block title="Men and production">
-            <MenVsProduction machineCode={machineCode} />
-          </Block>
-        </div>
+        <Block title="Output by step">
+          <StageOutput machineCode={machineCode} />
+        </Block>
+        <Block title="Men and production">
+          <MenVsProduction machineCode={machineCode} />
+        </Block>
         <Block title="Bobbins">
           <Bobbins machineCode={machineCode} />
         </Block>
@@ -130,11 +130,16 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
   );
 }
 
-/** Each block loads on its own and fails on its own. */
-function Block({ title, tall, children }: { title: string; tall?: boolean; children: ReactNode }) {
+/** Each block loads on its own and fails on its own. `bare`: the summary sits on the page, not in a panel. */
+function Block({ title, bare, children }: { title: string; bare?: boolean; children: ReactNode }) {
+  const loading = (
+    <div className={bare ? "py-6" : "rounded-panel border border-line-2 bg-surface p-5 sm:p-6"}>
+      <Skeleton rows={bare ? 3 : 5} />
+    </div>
+  );
   return (
     <BlockBoundary title={title}>
-      <Suspense fallback={<SectionSkeleton className={tall ? "h-64" : ""} />}>{children}</Suspense>
+      <Suspense fallback={loading}>{children}</Suspense>
     </BlockBoundary>
   );
 }

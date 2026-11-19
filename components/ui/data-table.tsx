@@ -19,8 +19,8 @@ type Tone = "critical" | "warning" | "good" | "neutral";
 /** How a yes/no column reads, in cells and in its filter. Status is always a word, never colour alone. */
 const YES_NO: Record<string, { yes: [string, Tone]; no: [string, Tone] }> = {
   approved: { yes: ["Approved", "neutral"], no: ["Not approved", "warning"] },
-  inPlan: { yes: ["In plan", "neutral"], no: ["Not in plan", "warning"] },
-  isDuplicate: { yes: ["Duplicate", "warning"], no: ["Counted", "neutral"] },
+  inPlan: { yes: ["In plan", "neutral"], no: ["Not planned", "neutral"] },
+  isDuplicate: { yes: ["Entered twice", "critical"], no: ["Entered once", "neutral"] },
 };
 const yesNo = (key: string, value: boolean) => (YES_NO[key] ?? { yes: ["Yes", "neutral"], no: ["No", "neutral"] })[value ? "yes" : "no"];
 
@@ -221,10 +221,17 @@ export function DataTable({
 function Cell({ column, value }: { column: ClientColumn; value: Row[string] }) {
   if (value === null || value === "") return <span className="text-ink-3">–</span>;
   if (typeof value === "boolean") {
+    // Entered once is the normal case: only the exception is worth a word.
+    if (column.key === "isDuplicate" && !value) return <span className="text-ink-3">–</span>;
     const [label, tone] = yesNo(column.key, value);
     return tone === "neutral" ? <span className="text-ink-2">{label}</span> : <Badge tone={tone}>{label}</Badge>;
   }
-  if (typeof value === "number") return column.format === "km" ? km(value, 2) : int(Math.round(value));
+  if (typeof value === "number") {
+    if (column.format === "km") return km(value, 2);
+    // Bobbins still to wind: nothing left reads "Done", more wound than needed reads "3 extra".
+    if (column.format === "toWind" && value <= 0) return <span className="font-normal text-ink-2">{value < 0 ? `${int(-value)} extra` : "Done"}</span>;
+    return int(Math.round(value));
+  }
   if (column.kind === "time") return <span className="num">{time(new Date(value))}</span>;
   if (column.kind === "day") return shortDay(value);
   return <span title={value}>{value}</span>;

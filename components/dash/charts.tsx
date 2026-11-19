@@ -43,7 +43,7 @@ export function Bars({
       <div className="relative" style={{ height }} role="img" aria-label={`${label}. Use Show as table for values.`}>
         {/* top gridline with its value, and the baseline */}
         <div className="absolute inset-x-0 top-0 border-t border-dashed border-line" />
-        <span className="num absolute -top-2.5 right-0 bg-surface pl-1 text-caption font-normal text-ink-3">
+        <span className="num absolute -top-2.5 right-0 bg-surface pl-1 text-caption font-normal text-ink-2">
           {fmt(top)} {unit}
         </span>
         <div className="absolute inset-x-0 bottom-0 border-t border-line" />
@@ -81,7 +81,7 @@ export function Bars({
       </div>
       <div className="mt-1.5 flex gap-[6%] px-[2%]">
         {bars.map((b, i) => (
-          <div key={b.key} className="num min-w-0 flex-1 truncate text-center text-caption font-normal text-ink-3">
+          <div key={b.key} className="num flex min-w-0 flex-1 justify-center whitespace-nowrap text-caption font-normal text-ink-2">
             {showAxis(i) ? b.axis : ""}
           </div>
         ))}
@@ -89,7 +89,7 @@ export function Bars({
       {bars.some((b) => b.sub) && (
         <div className="mt-1 flex gap-[6%] px-[2%]">
           {bars.map((b) => (
-            <div key={b.key} className="num min-w-0 flex-1 truncate text-center text-caption font-normal text-ink-2">
+            <div key={b.key} className="num flex min-w-0 flex-1 justify-center whitespace-nowrap text-caption font-normal text-ink-2">
               {b.sub}
             </div>
           ))}
@@ -150,12 +150,12 @@ export function SplitBar({ parts, label }: { parts: { name: string; value: numbe
               <div key={p.name} title={`${p.name}: ${fmt(p.value)}`} style={{ width: `${(p.value / sum) * 100}%`, background: `var(${p.color})` }} />
             ))}
       </div>
-      <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-label sm:grid-cols-3">
+      <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-label">
         {parts.map((p) => (
           <li key={p.name} className="flex items-center gap-2">
             <span className="size-2.5 shrink-0" style={{ background: `var(${p.color})` }} />
-            <span className="truncate text-ink-2">{p.name}</span>
-            <span className="num ml-auto font-medium">{fmt(p.value)}</span>
+            <span className="text-ink-2 first-letter:uppercase">{p.name}</span>
+            <span className="num font-medium">{fmt(p.value)}</span>
             {p.note && <span className="text-caption font-normal text-ink-3">{p.note}</span>}
           </li>
         ))}

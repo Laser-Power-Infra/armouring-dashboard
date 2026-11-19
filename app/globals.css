@@ -23,30 +23,6 @@
   --good: #248a3d;
   --good-bg: #e6f6ea;
 
-  /* legacy names, mapped onto the palette so every commit renders; removed when the dashboard is rebuilt */
-  --bg: var(--ground);
-  --surface-2: var(--ground);
-  --accent: var(--primary);
-  --idle: var(--secondary);
-  --day: var(--primary);
-  --night: var(--secondary);
-  --bar: var(--primary);
-  --s1: var(--primary);
-  --s2: var(--warning);
-  --s3: var(--secondary);
-  --s4: var(--warning);
-  --s5: var(--warning);
-  --s6: var(--critical);
-  --b-cable: var(--ink-2);
-  --b-inner: var(--ink-2);
-  --b-laying: var(--ink-2);
-  --b-insul: var(--ink-2);
-  --b-outer: var(--ink-2);
-  --b-output: var(--ink-2);
-  --b-men: var(--ink-2);
-  --b-bobbin: var(--ink-2);
-  --b-work: var(--ink-2);
-  --b-entries: var(--ink-2);
 }
 
 @theme inline {
@@ -67,12 +43,6 @@
   --color-warning-bg: var(--warning-bg);
   --color-good: var(--good);
   --color-good-bg: var(--good-bg);
-  /* legacy utilities, removed with the legacy names above */
-  --color-bg: var(--bg);
-  --color-surface-2: var(--surface-2);
-  --color-accent: var(--accent);
-  --color-idle: var(--idle);
-
   --font-sans: var(--font-inter), system-ui, sans-serif;
 
   --radius-control: 6px;

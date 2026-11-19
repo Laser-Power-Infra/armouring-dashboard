@@ -1,4 +1,4 @@
-import type { OrderLineRow } from "../../lib/dashboard/calc";
+import type { OrderLineRow } from "./order-rules";
 
 export const line = (o: Partial<OrderLineRow> & Pick<OrderLineRow, "prodOrder" | "stage">): OrderLineRow => ({
   sfgItem: o.stage,

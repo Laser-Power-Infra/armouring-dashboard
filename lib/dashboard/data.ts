@@ -2,21 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import type { QueryEnv } from "@/lib/tables/query";
-import {
-  armouringPending,
-  avgPerWorkingDay,
-  bobbinPool,
-  bobbinTotals,
-  dailyOutput,
-  dayKey,
-  lastShiftDays,
-  shiftDayOf,
-  summariseOrders,
-  sumKm,
-  waitingBetween,
-  waitingForLaying,
-  type Stage,
-} from "./calc";
+import { avgPerWorkingDay, bobbinPool, bobbinTotals, dailyOutput, dayKey, lastShiftDays, shiftDayOf, sumKm, type Stage } from "./calc";
+import { entryDays, hasOrders, pendingTotals, waitingTotals, type StepKey } from "./totals";
 
 // React cache(): each query runs once per request even when several blocks need it.
 
@@ -48,26 +35,21 @@ export const getMachines = cache(async () => {
   return rows.map((r) => r.machineCode).sort();
 });
 
-const kgpOrders = cache(async () => {
-  const prefix = (await getSettings()).get("kgp_order_prefix");
-  const lines = await db.orderLine.findMany({
-    where: typeof prefix === "string" ? { prodOrder: { startsWith: prefix } } : undefined,
-  });
-  const loaded = await db.orderLine.aggregate({ _max: { loadedAt: true } });
-  return { orders: summariseOrders(lines), loadedAt: loaded._max.loadedAt };
-});
+const ordersLoadedAt = cache(async () => (await db.orderLine.aggregate({ _max: { loadedAt: true } }))._max.loadedAt);
 
-/** Blocks 1–5: cable waiting in front of each step. */
+// Which step each waiting list sits in front of, in line order.
+const WAITING_STEPS: { key: StepKey; before: Stage; unit: "core km" | "km" }[] = [
+  { key: "insulation", before: "INSULATION", unit: "core km" },
+  { key: "laying", before: "LAYING", unit: "km" },
+  { key: "inner", before: "INNER_SHEATH", unit: "km" },
+  { key: "armouring", before: "ARMOURING", unit: "km" },
+  { key: "outer", before: "OUTER_SHEATH", unit: "km" },
+];
+
+/** Blocks 1–5: km waiting in front of each step and in how many orders. The orders themselves are a table (lib/tables). */
 export const getWaiting = cache(async () => {
-  const { orders, loadedAt } = await kgpOrders();
-  const steps: { key: string; before: Stage; unit: "core km" | "km"; rows: ReturnType<typeof waitingBetween> }[] = [
-    { key: "insulation", before: "INSULATION", unit: "core km", rows: waitingBetween(orders, "CONDUCTOR", "INSULATION") },
-    { key: "laying", before: "LAYING", unit: "km", rows: waitingForLaying(orders) },
-    { key: "inner", before: "INNER_SHEATH", unit: "km", rows: waitingBetween(orders, "LAYING", "INNER_SHEATH") },
-    { key: "armouring", before: "ARMOURING", unit: "km", rows: waitingBetween(orders, "INNER_SHEATH", "ARMOURING") },
-    { key: "outer", before: "OUTER_SHEATH", unit: "km", rows: waitingBetween(orders, "ARMOURING", "OUTER_SHEATH") },
-  ];
-  return { steps: steps.map((s) => ({ ...s, km: sumKm(s.rows) })), asOf: await asOf(loadedAt), hasData: orders.length > 0 };
+  const [totals, hasData, loadedAt] = await Promise.all([waitingTotals(db), hasOrders(db), ordersLoadedAt()]);
+  return { steps: WAITING_STEPS.map((s) => ({ ...s, ...totals[s.key] })), asOf: await asOf(loadedAt), hasData };
 });
 
 const entriesLoadedAt = cache(async () => (await db.productionEntry.aggregate({ _max: { loadedAt: true } }))._max.loadedAt);
@@ -177,7 +159,7 @@ export const getBobbins = cache(async (machineCode: string) => {
   const pool = bobbinPool(counts, owned?.owned ?? null);
   const filled = pool.states.find((s) => s.state.toLowerCase().startsWith("fill"))?.count ?? null;
   return {
-    lots: lots.map((l) => ({ ...l, balance: l.bobbinsNeeded - l.bobbinsWound })),
+    openLots: lots.length,
     totals: bobbinTotals(lots),
     filled,
     pool,
@@ -187,43 +169,22 @@ export const getBobbins = cache(async (machineCode: string) => {
   };
 });
 
-/** Block 9: all KGP orders with armouring pending, split by plan and approval. */
+/** Block 9: all KGP armouring still to do, split by plan and approval. The orders themselves are a table (lib/tables). */
 export const getWorkLeft = cache(async (machineCode: string) => {
-  const [{ orders, loadedAt }, output, openLots, jobs] = await Promise.all([
-    kgpOrders(),
-    getOutput(machineCode),
-    db.lot.findMany({ where: { completed: false }, select: { cableItem: true } }),
-    db.planJob.findMany({ where: { markComplete: false }, select: { cableItem: true } }),
-  ]);
-  const pending = armouringPending(orders);
-  const planned = new Set([...openLots, ...jobs].map((r) => r.cableItem?.trim().toLowerCase()).filter(Boolean));
-  // shortcut: matches by cable name only (plans carry no order number); upgrade when Production Planning gets one.
-  const rows = pending.map((r) => ({ ...r, inPlan: planned.has(r.cable.trim().toLowerCase()) }));
-  const total = sumKm(rows);
-  const days = (km: number) => (output.avgKmPerDay ? km / output.avgKmPerDay : null);
+  const [totals, hasData, loadedAt, output] = await Promise.all([pendingTotals(db), hasOrders(db), ordersLoadedAt(), getOutput(machineCode)]);
   return {
-    rows,
-    total,
-    days: days(total),
-    notInPlan: sumKm(rows.filter((r) => !r.inPlan)),
-    notApproved: sumKm(rows.filter((r) => !r.approved)),
+    ...totals,
+    days: output.avgKmPerDay ? totals.total / output.avgKmPerDay : null,
     avgKmPerDay: output.avgKmPerDay,
-    hasData: orders.length > 0,
+    hasData,
     asOf: await asOf(loadedAt),
   };
 });
 
-/** Latest production entries, last N shift days. */
-export const getLatestEntries = cache(async (machineCode: string) => {
-  const [today, n] = await Promise.all([getToday(), num("latest_entries_shift_days")]);
-  const days = lastShiftDays(today, n ?? 7);
-  const rows = await db.productionEntry.findMany({
-    where: { machineCode, shiftDay: { gte: new Date(`${days[0]}T00:00:00Z`) } },
-    orderBy: { enteredAt: "desc" },
-    take: 200,
-  });
-  const loadedAt = await entriesLoadedAt();
-  return { rows, days: days.length, hasData: !!loadedAt, asOf: await asOf(loadedAt) };
+/** Latest production entries: km per shift day over the last N shift days. The entries themselves are a table (lib/tables). */
+export const getEntryDays = cache(async (machineCode: string) => {
+  const [{ since }, loadedAt] = await Promise.all([getTableEnv(), entriesLoadedAt()]);
+  return { days: await entryDays(db, machineCode, since), hasData: !!loadedAt, asOf: await asOf(loadedAt) };
 });
 
 /** What a table query needs beyond its params: the client, and the first shift day of the latest-entries window. */

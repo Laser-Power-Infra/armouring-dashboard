@@ -19,8 +19,8 @@ export type ColumnDef = {
   search?: boolean;
   /** One row can hold several values; the source also exposes them as the array "<key>Arr". */
   array?: boolean;
-  /** How a number is shown: km with two decimals, or a whole number. */
-  format?: "km" | "int";
+  /** How a number is shown: km with two decimals, a whole number, or bobbins still to wind. */
+  format?: "km" | "int" | "toWind";
 };
 
 export type TableScope = { machine: string; /** first shift day of the latest-entries window */ since: Date };
@@ -94,7 +94,7 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "armourSize", label: "Size", kind: "text", search: true },
       { key: "bobbinsNeeded", label: "Needed", kind: "number", format: "int" },
       { key: "bobbinsWound", label: "Wound", kind: "number", format: "int" },
-      { key: "balance", label: "To wind", kind: "number", format: "int" },
+      { key: "balance", label: "To wind", kind: "number", format: "toWind" },
       { key: "approved", label: "Approved", kind: "bool" },
     ],
     // Job order: the running job first, then the next ones.

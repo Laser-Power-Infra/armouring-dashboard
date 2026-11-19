@@ -35,7 +35,12 @@ export function Panel({
           </h2>
           {subtitle && <p className="mt-0.5 text-label text-ink-2">{subtitle}</p>}
         </div>
-        {asOf && <AsOf asOf={asOf} />}
+        {/* phones: the time takes its own line so the title keeps its width */}
+        {asOf && (
+          <span className="w-full sm:w-auto">
+            <AsOf asOf={asOf} />
+          </span>
+        )}
       </header>
       {children}
     </section>
@@ -66,13 +71,14 @@ export function Stat({
   value: string;
   unit?: string;
   note?: ReactNode;
-  tone?: "critical" | "warning";
+  /** idle: a machine with no work has its own colour (md §7.4) */
+  tone?: "critical" | "warning" | "idle";
   size?: "figure" | "headline";
 }) {
   return (
     <div className="min-w-0">
       <div className="text-label text-ink-2">{label}</div>
-      <div className={`num mt-1 ${size === "headline" ? "text-headline" : "text-figure"} ${tone === "critical" ? "text-critical" : tone === "warning" ? "text-warning" : ""}`}>
+      <div className={`num mt-1 ${size === "headline" ? "text-headline" : "text-figure"} ${tone === "critical" ? "text-critical" : tone === "warning" ? "text-warning" : tone === "idle" ? "text-secondary" : ""}`}>
         {value}
         {unit && <span className="ml-1.5 text-body font-medium tracking-normal text-ink-2">{unit}</span>}
       </div>
