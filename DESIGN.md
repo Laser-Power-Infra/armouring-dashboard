@@ -342,7 +342,7 @@ A labelled figure: grey label above, the number in tabular figures, a grey unit 
 
 ### Data Table
 The signature working component. The browser holds one page; everything else is asked of the server.
-- **Shape:** square. A hairline above and below the table and between rows; no vertical lines, no zebra stripes. Header row 36px, body rows 44px, cell padding 12px.
+- **Shape:** square. Every cell is ruled on all four sides with a hairline (the user asked for cell borders, 2026-11-19), and the header row is shaded with the page ground; no zebra stripes. Borders are separate, not collapsed, so the pinned first column keeps its lines while the table scrolls sideways. Header row 36px, body rows 44px, cell padding 12px.
 - **Header:** each column name is a button in caption size, grey, with a small caret. It turns blue when that column is filtered and shows the number of chosen values in brackets; an arrow shows the sort direction.
 - **Cells:** label size. The first column is weight 500 and stays in place when the table scrolls sideways. Numbers are right-aligned in tabular figures. An empty value is a grey dash. Long text is cut with an ellipsis at 22rem. Rows get the ground colour on hover.
 - **Server rules (decided):** every table is paged, sorted, searched and filtered on the server. Search waits 700 ms after typing stops (Enter sends at once). Filter choices for a column are fetched from the server, with their counts. Number and time columns sort only; text, yes/no and day columns can also be filtered. The default order is biggest first.
@@ -351,8 +351,8 @@ The signature working component. The browser holds one page; everything else is 
 
 ### Column Menu (Popover)
 - **Style:** white, 1px line border, 10px radius, the floating shadow, 256px wide, 6px padding. It opens under its header, or above when there is more room there, and never grows past the screen; a long list scrolls inside it.
-- **Content:** Sort ascending and Sort descending (the active one in blue); then, for columns that can be filtered, a find box and a checkbox list of values with counts, Show more, and Clear this filter.
-- **Behaviour:** closes on Escape or an outside click and returns focus to the header.
+- **Content:** Sort ascending and Sort descending (the active one in blue); then, for columns that can be filtered, a find box and a checkbox list of values with counts, Show more, and Clear this filter. "(blank)" is always the first choice, with 0 beside it when no row is blank.
+- **Behaviour:** closes on Escape or an outside click and returns focus to the header. It is placed on the page, not pinned to the screen, so it scrolls away with the table it belongs to.
 
 ### Pipeline Strip
 The signature picture: the plant line from left to right, with the cable waiting in front of each step shown as a square pile above the step's name.
