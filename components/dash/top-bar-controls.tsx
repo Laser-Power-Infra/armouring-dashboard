@@ -10,7 +10,7 @@ export function MachinePicker({ current, machines }: { current: string; machines
   const router = useRouter();
   if (machines.length < 2) return null;
   return (
-    <Select aria-label="Machine" value={current} onChange={(e) => router.push(`/dashboard/${e.target.value.toLowerCase()}`)}>
+    <Select className="shrink-0" aria-label="Machine" value={current} onChange={(e) => router.push(`/dashboard/${e.target.value.toLowerCase()}`)}>
       {machines.map((m) => (
         <option key={m.code} value={m.code}>
           {m.label}

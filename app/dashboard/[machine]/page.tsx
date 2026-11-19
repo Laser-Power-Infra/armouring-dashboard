@@ -46,7 +46,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
       {/* Translucent bar: content scrolls under it. Solid for readers who ask for less transparency. */}
       <header className="sticky top-0 z-20 border-b border-line-2 bg-surface/75 backdrop-blur-xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-surface [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none">
         <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
-          <span className="text-body font-semibold">Kharagpur</span>
+          <span className="hidden text-body font-semibold sm:inline">Kharagpur</span>
           <MachinePicker current={machineCode} machines={machines} />
           <nav aria-label="Jump to" className="ml-2 hidden gap-1 md:flex">
             {jump.map((j) => (
