@@ -3,13 +3,12 @@ import { handleFacets, handleRows, type TableDeps } from "../../lib/tables/handl
 
 const since = new Date("2026-11-12T00:00:00Z");
 const deps = (over: Partial<TableDeps> = {}) => {
-  const d = {
-    env: vi.fn(async () => ({ client: { $queryRaw: vi.fn() }, since })),
-    fetchRows: vi.fn(async () => ({ rows: [{ prodOrder: "P7-1", km: 8 }], total: 37 })),
-    fetchFacet: vi.fn(async () => ({ options: [{ value: "ACME", count: 2 }], hasMore: false })),
-    ...over,
+  const base = {
+    env: vi.fn<TableDeps["env"]>(async () => ({ client: { $queryRaw: vi.fn() }, since })),
+    fetchRows: vi.fn<TableDeps["fetchRows"]>(async () => ({ rows: [{ prodOrder: "P7-1", km: 8 }], total: 37 })),
+    fetchFacet: vi.fn<TableDeps["fetchFacet"]>(async () => ({ options: [{ value: "ACME", count: 2 }], hasMore: false })),
   };
-  return d as typeof d & TableDeps;
+  return { ...base, ...over } as typeof base;
 };
 const sp = (qs: string) => new URLSearchParams(qs);
 

@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { FILTER_KINDS, type TableDef } from "./defs.ts";
+import { BLANK, PAGE_SIZES } from "./shared.ts";
+
+export { BLANK, PAGE_SIZES };
 
 export type TableParams = {
   machine: string;
@@ -13,9 +16,6 @@ export type TableParams = {
   filters: Record<string, string[]>;
 };
 
-export const PAGE_SIZES = [5, 10, 25, 50] as const;
-/** Filter value for "no value" (NULL or empty); the table labels it "(blank)". */
-export const BLANK = "";
 const FILTER_PREFIX = "f.";
 
 export const defaultParams = (def: TableDef, machine: string): TableParams => ({
