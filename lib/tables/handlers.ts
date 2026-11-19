@@ -1,6 +1,6 @@
 import { z, ZodError } from "zod";
 import { FILTER_KINDS, isTableName, TABLES } from "./defs.ts";
-import { parseTableParams } from "./params.ts";
+import { parseTableParams, requestText } from "./params.ts";
 import type { fetchFacet, fetchRows, QueryEnv } from "./query.ts";
 
 // The request handlers behind /api/tables, kept free of Next so they run in plain tests.
@@ -38,7 +38,7 @@ export function handleFacets(table: string, sp: URLSearchParams, deps: TableDeps
     const { column, oq, offset } = z
       .object({
         column: z.string().refine((c) => filterable.includes(c)),
-        oq: z.string().trim().max(200).default(""),
+        oq: requestText.transform((s) => s.trim()).default(""),
         offset: z.coerce.number().int().min(0).max(100_000).default(0),
       })
       .parse(Object.fromEntries(["column", "oq", "offset"].flatMap((k) => (sp.has(k) ? [[k, sp.get(k)]] : []))));

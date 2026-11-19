@@ -54,6 +54,26 @@ export function createLatest<T>() {
   };
 }
 
+/**
+ * Keeps what a table shows in step with what the reader asked for. `want` is called whenever
+ * the wanted state changes: it starts a request unless that state is already on screen,
+ * and either way any older request stops counting.
+ */
+export function createSync<T>() {
+  const latest = createLatest<T>();
+  return {
+    want(key: string, shownKey: string, job: (signal: AbortSignal) => Promise<T>): Promise<T | undefined> {
+      // Back to what is on screen (Next, then straight back): the request in flight must not land on top of it.
+      if (key === shownKey) {
+        latest.cancel();
+        return Promise.resolve(undefined);
+      }
+      return latest.run(job);
+    },
+    cancel: latest.cancel,
+  };
+}
+
 /** The request for one page of a table, or (with `facet`) for one column's filter choices. */
 export function tableUrl(table: string, p: TableParams, facet?: { column: string; oq: string; offset: number }): string {
   const sp = new URLSearchParams({ machine: p.machine, page: String(p.page), size: String(p.size), dir: p.dir });

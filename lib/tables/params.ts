@@ -18,6 +18,12 @@ export type TableParams = {
 
 const FILTER_PREFIX = "f.";
 
+/** Text typed by the reader. Postgres refuses a NUL byte, so it is a bad request, not a server error. */
+export const requestText = z
+  .string()
+  .max(200)
+  .refine((s) => !s.includes("\u0000"));
+
 export const defaultParams = (def: TableDef, machine: string): TableParams => ({
   machine,
   page: 1,
@@ -45,7 +51,7 @@ export function parseTableParams(def: TableDef, sp: URLSearchParams): TableParam
         .nullable()
         .default(null),
       dir: z.enum(["asc", "desc"]).default("desc"),
-      q: z.string().trim().max(200).default(""),
+      q: requestText.transform((s) => s.trim()).default(""),
     })
     .parse(Object.fromEntries(["machine", "page", "size", "sort", "dir", "q"].flatMap((k) => (sp.has(k) ? [[k, sp.get(k)]] : []))));
 
@@ -53,7 +59,7 @@ export function parseTableParams(def: TableDef, sp: URLSearchParams): TableParam
   for (const name of new Set(sp.keys())) {
     if (!name.startsWith(FILTER_PREFIX)) continue;
     const column = def.columns.find((c) => c.key === name.slice(FILTER_PREFIX.length));
-    const values = z.array(z.string().max(200)).max(200).parse(sp.getAll(name));
+    const values = z.array(requestText).max(200).parse(sp.getAll(name));
     if (!column || !FILTER_KINDS.includes(column.kind)) throw new z.ZodError([{ code: "custom", message: "Not a filter column", path: [name], input: name }]);
     if (column.kind === "bool" && values.some((v) => v !== "true" && v !== "false")) throw new z.ZodError([{ code: "custom", message: "Yes/no filter", path: [name], input: values }]);
     filters[column.key] = values;

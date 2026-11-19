@@ -222,7 +222,7 @@ Order is fixed by the rules doc §5. A reader can stop at any point.
 │ [Search orders…]                                 Clear filters   │
 │ Order ▾     Customer ▾      Cable ▾                      km ▾    │
 │ ──────────────────────────────────────────────────────────────── │
-│ KGP-1042    Tata Power      3C x 240 sqmm               12.40    │
+│ KGP-1042    Eastern Grid     3C x 240 sqmm               12.40    │
 │ …                                                                │
 │ 1–10 of 37                                     ‹ Previous  Next ›│
 └──────────────────────────────────────────────────────────────────┘

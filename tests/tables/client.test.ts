@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clampPage, createLatest, debounce, SEARCH_DEBOUNCE_MS, tableUrl } from "../../lib/tables/client";
+import { clampPage, createLatest, createSync, debounce, SEARCH_DEBOUNCE_MS, tableUrl } from "../../lib/tables/client";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -71,6 +71,25 @@ describe("createLatest", () => {
     l.cancel();
     vi.advanceTimersByTime(100);
     expect(await p).toBeUndefined();
+  });
+});
+
+describe("createSync", () => {
+  const slow = (value: string, ms: number) => () => new Promise<string>((r) => setTimeout(() => r(value), ms));
+  it("asks for a state that is not on screen", async () => {
+    expect(await createSync<string>().want("page2", "page1", () => Promise.resolve("rows of page 2"))).toBe("rows of page 2");
+  });
+  it("asks for nothing when the wanted state is already on screen", async () => {
+    const job = vi.fn(() => Promise.resolve("x"));
+    expect(await createSync<string>().want("page1", "page1", job)).toBeUndefined();
+    expect(job).not.toHaveBeenCalled();
+  });
+  it("Next then straight back: the slow page-2 answer must not replace page 1", async () => {
+    const s = createSync<string>();
+    const page2 = s.want("page2", "page1", slow("rows of page 2", 500)); // Next
+    s.want("page1", "page1", slow("never asked", 0)); // Previous, before page 2 answered
+    vi.advanceTimersByTime(500);
+    expect(await page2).toBeUndefined();
   });
 });
 

@@ -55,7 +55,7 @@ describe("GET /api/tables/:table/facets", () => {
     const [, column, params, oq, offset] = d.fetchFacet.mock.calls[0];
     expect([column, params.q, oq, offset]).toEqual(["customer", "tata", "ac", 50]);
   });
-  it.each(["column=km", "column=password", "", "column=customer&offset=-1", "column=customer&offset=x", "column=customer&oq=" + "x".repeat(201)])(
+  it.each(["column=km", "column=password", "", "column=customer&offset=-1", "column=customer&offset=x", "column=customer&oq=" + "x".repeat(201), "column=customer&oq=a%00"])(
     "'%s' is 400 and nothing is queried",
     async (bad) => {
       const d = deps();

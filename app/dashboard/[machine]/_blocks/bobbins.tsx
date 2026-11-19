@@ -12,7 +12,7 @@ const STATE_COLORS: [RegExp, string][] = [
   [/fill/i, "--secondary"],
   [/empty/i, "--line"],
   [/bad|wound/i, "--warning"],
-  [/work/i, "--warning-bg"],
+  [/work/i, "--ink-3"],
   [/brok/i, "--critical"],
 ];
 const colorFor = (state: string) => STATE_COLORS.find(([re]) => re.test(state))?.[1] ?? "--ink-3";
@@ -29,8 +29,8 @@ export async function Bobbins({ machineCode }: { machineCode: string }) {
       ) : (
         <div className="space-y-8">
           <div className="grid gap-8 @4xl:grid-cols-[1fr_1.3fr]">
-            <div className="grid grid-cols-3 gap-6">
-              <Stat label="Still to wind" value={int(b.totals.toWind)} tone={b.totals.toWind > 0 ? "warning" : undefined} />
+            <div className="flex flex-wrap content-start gap-x-10 gap-y-5">
+              <Stat label="Still to wind" value={int(b.totals.toWind)} />
               <Stat label="Extra wound" value={int(b.totals.extra)} />
               <Stat label="Filled, unused" value={b.filled !== null ? int(b.filled) : "–"} />
             </div>
@@ -57,7 +57,7 @@ export async function Bobbins({ machineCode }: { machineCode: string }) {
           </div>
           <div className="min-w-0">
             <h3 className="mb-3 text-body font-semibold">Open lots</h3>
-            {b.openLots === 0 ? <Empty>No open lots for this machine.</Empty> : <ServerTable name="lots" machineCode={machineCode} version={b.asOf.at} />}
+            {b.openLots === 0 ? <Empty>No open lots for this machine.</Empty> : <ServerTable name="lots" machineCode={machineCode} />}
             <p className="mt-3 text-caption font-normal text-ink-2">Finished jobs with an open lot make “still to wind” too high. Close them in Production Planning.</p>
           </div>
         </div>

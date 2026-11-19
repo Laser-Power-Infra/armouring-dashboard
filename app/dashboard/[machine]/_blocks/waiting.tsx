@@ -32,7 +32,7 @@ export async function CableReady({ machineCode }: { machineCode: string }) {
       ) : (
         <>
           <div className="grid gap-6 @4xl:grid-cols-[13rem_1fr]">
-          <div className="grid grid-cols-2 content-start gap-6 @md:grid-cols-3 @4xl:grid-cols-1">
+          <div className="flex flex-wrap content-start gap-x-10 gap-y-5 @4xl:flex-col">
             <Stat label="Ready" value={km(ready.km)} unit="km" />
             <Stat
               label="Days of cover"
@@ -43,7 +43,7 @@ export async function CableReady({ machineCode }: { machineCode: string }) {
             <Stat label="Orders" value={int(ready.count)} />
           </div>
           <div className="min-w-0">
-            <ServerTable name="cable-ready" machineCode={machineCode} version={waiting.asOf.at} />
+            <ServerTable name="cable-ready" machineCode={machineCode} />
           </div>
           </div>
         </>
@@ -77,7 +77,7 @@ export async function Upstream({ machineCode }: { machineCode: string }) {
               <div className="grid gap-6 @4xl:grid-cols-[13rem_1fr]">
                 <Stat label="Waiting" value={km(step.km)} unit={step.unit} note={`in ${int(step.count)} orders`} />
                 <div className="min-w-0">
-                  <ServerTable name={u.table} machineCode={machineCode} version={waiting.asOf.at} />
+                  <ServerTable name={u.table} machineCode={machineCode} />
                 </div>
               </div>
             )}

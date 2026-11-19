@@ -20,7 +20,7 @@ export async function WorkLeft({ machineCode }: { machineCode: string }) {
       ) : (
         <div className="space-y-8">
           <div className="grid gap-8 @4xl:grid-cols-[1fr_1.3fr]">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="flex flex-wrap content-start gap-x-10 gap-y-5">
               <Stat label="Still to armour" value={km(w.total)} unit="km" />
               <Stat
                 label="Days of work"
@@ -41,7 +41,7 @@ export async function WorkLeft({ machineCode }: { machineCode: string }) {
               <p className="mt-2 text-caption font-normal text-ink-2">In km. Only approved lots can be planned on the machine.</p>
             </div>
           </div>
-          <ServerTable name="work-left" machineCode={machineCode} version={w.asOf.at} />
+          <ServerTable name="work-left" machineCode={machineCode} />
         </div>
       )}
     </Panel>
@@ -75,7 +75,7 @@ export async function LatestEntries({ machineCode }: { machineCode: string }) {
               </li>
             ))}
           </ol>
-          <ServerTable name="entries" machineCode={machineCode} version={e.asOf.at} />
+          <ServerTable name="entries" machineCode={machineCode} />
         </div>
       )}
     </Panel>

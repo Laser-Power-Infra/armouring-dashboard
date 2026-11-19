@@ -28,6 +28,10 @@ describe("table request params", () => {
   it.each(["", "machine=", "machine=ARM5%27%3B--", "machine=" + "A".repeat(21)])("rejects machine in '%s'", (qs) => {
     expect(() => parse(qs)).toThrow();
   });
+  // Postgres refuses a NUL byte in text: stop it here as a bad request, not a server error.
+  it.each(["q=a%00b", "f.customer=a%00"])("rejects a NUL byte in %s", (bad) => {
+    expect(() => parse("machine=ARM5&" + bad)).toThrow();
+  });
   it("trims q", () => {
     expect(parse("machine=ARM5&q=%20tata%20").q).toBe("tata");
   });

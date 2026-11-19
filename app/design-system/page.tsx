@@ -41,7 +41,7 @@ const type = [
   ["text-page", "Page title 24", "Armouring 5"],
   ["text-title", "Block title 20", "Cable ready for armouring"],
   ["text-body", "Body 16", "Inner sheath done, armouring not done."],
-  ["text-label", "Label, table cell 14", "Tata Power · 3C x 240 sqmm"],
+  ["text-label", "Label, table cell 14", "Eastern Grid Corp · 3C x 240 sqmm"],
   ["text-caption", "Caption 12", "Data as of 18 Nov, 07:28"],
 ] as const;
 
@@ -130,8 +130,8 @@ export default async function DesignSystemPage() {
           </Field>
         </div>
         <Row label="Checkbox">
-          <Checkbox label="Tata Power" defaultChecked />
-          <Checkbox label="Adani Energy" />
+          <Checkbox label="Eastern Grid Corp" defaultChecked />
+          <Checkbox label="Coastal Rail Projects" />
           <Checkbox label="Disabled" disabled />
         </Row>
       </Group>
@@ -140,8 +140,8 @@ export default async function DesignSystemPage() {
         <Button popoverTarget="ds-popover">Customer</Button>
         <Popover id="ds-popover">
           <div className="space-y-1 p-1.5">
-            <Checkbox label="Tata Power" defaultChecked />
-            <Checkbox label="Adani Energy" />
+            <Checkbox label="Eastern Grid Corp" defaultChecked />
+            <Checkbox label="Coastal Rail Projects" />
           </div>
         </Popover>
       </Group>

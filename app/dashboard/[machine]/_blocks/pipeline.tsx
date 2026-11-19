@@ -26,7 +26,6 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
       id="line"
       title="Cable waiting along the line"
       subtitle="How much cable sits in front of each step. The tallest pile shows where work is stuck."
-      glyph="layers"
       asOf={waiting.asOf}
     >
       {!waiting.hasData && <p className="mb-4 text-label text-ink-2">Order lines from the SFG dashboard have not been loaded, so every pile shows zero.</p>}
@@ -51,7 +50,7 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
                         <div data-pile className={isMachine ? "bg-primary" : "bg-primary/30"} style={{ ["--h" as string]: `${h}%` }} />
                       </div>
                     ) : (
-                      <div className="order-1 flex-1 text-caption font-normal text-ink-2 sm:order-none sm:flex-none">core km, not to scale</div>
+                      <div className="order-1 flex-1 text-caption font-normal text-ink-2 sm:order-none sm:flex-none">not to scale</div>
                     )}
                   </>
                 ) : (

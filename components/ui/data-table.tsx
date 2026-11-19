@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import type { ClientColumn, TableName } from "@/lib/tables/defs";
 import type { TableParams } from "@/lib/tables/params";
 import type { FacetOption, Row } from "@/lib/tables/query";
-import { clampPage, createLatest, debounce, tableUrl } from "@/lib/tables/client";
+import { clampPage, createLatest, createSync, debounce, tableUrl } from "@/lib/tables/client";
 import { BLANK, PAGE_SIZES } from "@/lib/tables/shared";
 import { int, km, shortDay, time } from "@/lib/format";
 import { Button, Spinner } from "./button";
@@ -33,7 +33,9 @@ const getJson = async <T,>(url: string, signal: AbortSignal): Promise<T> => {
 /**
  * A table whose paging, sorting, search and filter choices all come from the server:
  * the browser holds one page. `initial` is page 1 as rendered on the server, so there is
- * no loading flash on arrival; `version` is the block's data-as-of time, and a change refetches.
+ * no loading flash on arrival. `version` changes each time the server renders the block again
+ * (Refresh, or a new data load): the table then takes the new page 1, or, if the reader has moved
+ * away from the default view, asks again for the view they are on. A tile and its table stay in step.
  */
 export function DataTable({
   table,
@@ -62,7 +64,14 @@ export function DataTable({
   const key = `${JSON.stringify(params)}|${version}|${retries}`;
   // What is on screen, and which request it answers. Loading = the wanted request is not the shown one.
   const [shown, setShown] = useState({ key, data: initial, failed: false });
-  const [latest] = useState(() => createLatest<Page>());
+  const [sync] = useState(() => createSync<Page>());
+  const untouched = state.page === 1 && state.size === defaultSize && !state.sort && !state.q && Object.values(state.filters).every((v) => !v.length);
+  const [seen, setSeen] = useState(version);
+  if (seen !== version) {
+    setSeen(version);
+    // The server just sent a fresh page 1 for the default view: show it, no request needed.
+    if (untouched) setShown({ key, data: initial, failed: false });
+  }
   const [search] = useState(() =>
     debounce((q: string) => {
       setTyping(false);
@@ -73,11 +82,10 @@ export function DataTable({
   const menuId = useId();
 
   useEffect(() => {
-    if (shown.key === key) return;
-    latest
-      .run((signal) => getJson<Page>(tableUrl(table, params), signal))
+    sync
+      .want(key, shown.key, (signal) => getJson<Page>(tableUrl(table, params), signal))
       .then((data) => {
-        if (!data) return; // a newer request took over
+        if (!data) return; // already on screen, or a newer request took over
         const last = clampPage(params.page, params.size, data.total);
         // The list shrank under us: step back to its last page instead of showing nothing.
         if (last !== params.page) setState((s) => ({ ...s, page: last }));
@@ -88,7 +96,7 @@ export function DataTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  useEffect(() => () => (search.cancel(), latest.cancel()), [search, latest]);
+  useEffect(() => () => (search.cancel(), sync.cancel()), [search, sync]);
 
   /** Any change to what is shown starts again from page 1. */
   const change = (patch: Partial<typeof state>) => setState((s) => ({ ...s, page: 1, ...patch }));
