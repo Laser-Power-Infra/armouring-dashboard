@@ -19,7 +19,7 @@ export async function WorkLeft({ machineCode }: { machineCode: string }) {
         <Empty>No armouring is pending on Kharagpur orders.</Empty>
       ) : (
         <div className="space-y-8">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
+          <div className="grid gap-8 @4xl:grid-cols-[1fr_1.3fr]">
             <div className="grid grid-cols-2 gap-6">
               <Stat label="Still to armour" value={km(w.total)} unit="km" />
               <Stat

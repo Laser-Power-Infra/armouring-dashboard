@@ -14,7 +14,15 @@ export async function CableReady({ machineCode }: { machineCode: string }) {
   const name = machineLabel(machineCode);
 
   return (
-    <Panel id="cable" title={`Cable ready for ${name}`} subtitle="Inner sheath done, armouring not done. Biggest first." glyph="drum" asOf={waiting.asOf}>
+    <Panel
+      id="cable"
+      title={`Cable ready for ${name}`}
+      subtitle="Inner sheath done, armouring not done. Biggest first."
+      glyph="drum"
+      asOf={waiting.asOf}
+      // The main list takes two cells, so the four earlier steps fill the grid with no hole: 2 + 2x2, or 2+1 over 3.
+      className="min-[1440px]:col-span-2"
+    >
       {!waiting.hasData ? (
         <Empty>This fills in after the first refresh of order lines from the SFG dashboard.</Empty>
       ) : ready.km === 0 ? (
@@ -23,7 +31,8 @@ export async function CableReady({ machineCode }: { machineCode: string }) {
         </p>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-3 gap-6">
+          <div className="grid gap-6 @4xl:grid-cols-[13rem_1fr]">
+          <div className="grid grid-cols-2 content-start gap-6 @md:grid-cols-3 @4xl:grid-cols-1">
             <Stat label="Ready" value={km(ready.km)} unit="km" />
             <Stat
               label="Days of cover"
@@ -33,7 +42,10 @@ export async function CableReady({ machineCode }: { machineCode: string }) {
             />
             <Stat label="Orders" value={int(ready.count)} />
           </div>
-          <ServerTable name="cable-ready" machineCode={machineCode} version={waiting.asOf.at} />
+          <div className="min-w-0">
+            <ServerTable name="cable-ready" machineCode={machineCode} version={waiting.asOf.at} />
+          </div>
+          </div>
         </>
       )}
     </Panel>
@@ -50,8 +62,9 @@ const upstream: { key: string; table: TableName; title: string; subtitle: string
 /** Blocks 2–5, in md order. */
 export async function Upstream({ machineCode }: { machineCode: string }) {
   const waiting = await getWaiting();
+  // A fragment: each panel is its own cell of the page grid, beside Cable ready.
   return (
-    <div className="space-y-6">
+    <>
       {upstream.map((u) => {
         const step = waiting.steps.find((s) => s.key === u.key)!;
         return (
@@ -61,7 +74,7 @@ export async function Upstream({ machineCode }: { machineCode: string }) {
             ) : step.count === 0 ? (
               <Empty>Nothing waiting here.</Empty>
             ) : (
-              <div className="grid gap-6 lg:grid-cols-[13rem_1fr]">
+              <div className="grid gap-6 @4xl:grid-cols-[13rem_1fr]">
                 <Stat label="Waiting" value={km(step.km)} unit={step.unit} note={`in ${int(step.count)} orders`} />
                 <div className="min-w-0">
                   <ServerTable name={u.table} machineCode={machineCode} version={waiting.asOf.at} />
@@ -71,6 +84,6 @@ export async function Upstream({ machineCode }: { machineCode: string }) {
           </Panel>
         );
       })}
-    </div>
+    </>
   );
 }

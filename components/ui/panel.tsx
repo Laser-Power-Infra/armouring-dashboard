@@ -22,7 +22,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section id={id} aria-labelledby={id && `${id}-title`} className={`scroll-mt-28 rounded-panel border border-line-2 bg-surface p-5 sm:p-6 ${className}`}>
+    <section id={id} aria-labelledby={id && `${id}-title`} className={`@container scroll-mt-28 rounded-panel border border-line-2 bg-surface p-5 sm:p-6 ${className}`}>
       <header className="mb-5 flex flex-wrap items-start gap-x-3 gap-y-1">
         {glyph && (
           <span className="mt-1 text-ink-2">

@@ -28,7 +28,7 @@ export async function Bobbins({ machineCode }: { machineCode: string }) {
         <Empty>Fills in once the Production Planning lots and Bobbin Status sheets are loaded.</Empty>
       ) : (
         <div className="space-y-8">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
+          <div className="grid gap-8 @4xl:grid-cols-[1fr_1.3fr]">
             <div className="grid grid-cols-3 gap-6">
               <Stat label="Still to wind" value={int(b.totals.toWind)} tone={b.totals.toWind > 0 ? "warning" : undefined} />
               <Stat label="Extra wound" value={int(b.totals.extra)} />

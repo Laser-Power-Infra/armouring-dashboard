@@ -22,7 +22,7 @@ export async function StageOutput({ machineCode }: { machineCode: string }) {
               No production entries in the last {nDays} shift days. Check that the plant is still entering production.
             </p>
           )}
-          <div className="grid gap-x-8 gap-y-8 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-x-8 gap-y-8 @xl:grid-cols-2 @5xl:grid-cols-4">
             {steps.map((s) => {
               const isSlow = s.stage === slowest;
               return (
@@ -74,7 +74,7 @@ export async function MenVsProduction({ machineCode }: { machineCode: string }) 
         <Empty>Fills in once production entries and men posted are loaded.</Empty>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-6 @2xl:grid-cols-4">
             <Stat label={l ? `Made on ${shortDay(l.day)}` : "Latest day"} value={l ? km(l.km) : "–"} unit="km" note={l ? `Day ${km(l.dayKm)}, night ${km(l.nightKm)}` : undefined} />
             <Stat label="Men posted" value={l ? int(l.menDay + l.menNight) : "–"} note={l ? `Day ${l.menDay}, night ${l.menNight}` : undefined} />
             <Stat label="Km per man" value={l?.kmPerMan != null ? km(l.kmPerMan, 2) : "–"} note={l?.kmPerMan == null ? "No men posted yet" : undefined} />

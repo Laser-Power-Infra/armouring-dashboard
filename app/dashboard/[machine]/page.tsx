@@ -27,6 +27,9 @@ const jump = [
   { href: "#entries", label: "Entries" },
 ];
 
+// Panels in a row share its height; each lays out its own inside by the width it gets (container queries).
+const GRID = "grid gap-6";
+
 const jumpLink = "inline-flex h-8 shrink-0 items-center rounded-control px-2.5 text-label text-ink-2 hover:bg-ground hover:text-ink";
 
 export default async function DashboardPage({ params }: { params: Promise<{ machine: string }> }) {
@@ -45,7 +48,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
     <>
       {/* Translucent bar: content scrolls under it. Solid for readers who ask for less transparency. */}
       <header className="sticky top-0 z-20 border-b border-line-2 bg-surface/75 backdrop-blur-xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-surface [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none">
-        <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
+        <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
           <span className="hidden text-body font-semibold sm:inline">Kharagpur</span>
           <MachinePicker current={machineCode} machines={machines} />
           <nav aria-label="Jump to" className="ml-2 hidden gap-1 md:flex">
@@ -97,31 +100,38 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-[1200px] flex-1 space-y-6 px-4 pb-16 pt-8 sm:px-6">
+      <main className="w-full flex-1 space-y-6 px-4 pb-16 pt-8 sm:px-6">
         <Block title="Summary" bare>
           <Summary machineCode={machineCode} />
         </Block>
         <Block title="Cable waiting along the line">
           <Pipeline machineCode={machineCode} />
         </Block>
-        <Block title="Cable ready">
-          <CableReady machineCode={machineCode} />
-        </Block>
-        <Block title="Cable waiting at earlier steps">
-          <Upstream machineCode={machineCode} />
-        </Block>
-        <Block title="Output by step">
-          <StageOutput machineCode={machineCode} />
-        </Block>
-        <Block title="Men and production">
-          <MenVsProduction machineCode={machineCode} />
-        </Block>
-        <Block title="Bobbins">
-          <Bobbins machineCode={machineCode} />
-        </Block>
-        <Block title="Work left">
-          <WorkLeft machineCode={machineCode} />
-        </Block>
+        {/* The page uses the whole screen. Tables sit side by side once there is room: two across, three on very wide screens. */}
+        <div className={`${GRID} min-[1440px]:grid-cols-2 min-[2200px]:grid-cols-3`}>
+          <Block title="Cable ready">
+            <CableReady machineCode={machineCode} />
+          </Block>
+          <Block title="Cable waiting at earlier steps">
+            <Upstream machineCode={machineCode} />
+          </Block>
+        </div>
+        <div className={`${GRID} min-[1700px]:grid-cols-2`}>
+          <Block title="Output by step">
+            <StageOutput machineCode={machineCode} />
+          </Block>
+          <Block title="Men and production">
+            <MenVsProduction machineCode={machineCode} />
+          </Block>
+        </div>
+        <div className={`${GRID} min-[1900px]:grid-cols-2`}>
+          <Block title="Bobbins">
+            <Bobbins machineCode={machineCode} />
+          </Block>
+          <Block title="Work left">
+            <WorkLeft machineCode={machineCode} />
+          </Block>
+        </div>
         <Block title="Latest production entries">
           <LatestEntries machineCode={machineCode} />
         </Block>
