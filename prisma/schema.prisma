@@ -248,3 +248,137 @@ model MachineDaily {
 
   @@map("machine_daily")
 }
+
+// ── KGP cards (docs/KGP_4_Cards_Build_Spec.md) ──────────────────────────
+// Every issue is kept. One data table per card; each row points at its issue.
+model CardIssue {
+  id          Int       @id @default(autoincrement())
+  version     String    @unique // as written in the sheet's Version column
+  issueDate   DateTime  @map("issue_date") @db.Date
+  rev         Int
+  d0          DateTime  @db.Date // first day of the card
+  loadedAt    DateTime  @default(now()) @map("loaded_at") @db.Timestamptz
+
+  plan         CardPlan[]
+  labour       CardLabour[]
+  spareMen     CardSpareMen[]
+  drumNeed     CardDrumNeed[]
+  drumAssembly CardDrumAssembly[]
+  drumStock    CardDrumStock[]
+
+  @@unique([issueDate, rev])
+  @@map("card_issues")
+}
+
+// Card 1: one planned job per machine per day.
+model CardPlan {
+  id         Int       @id @default(autoincrement())
+  issueId    Int       @map("issue_id")
+  issue      CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  rowNo      Int       @map("row_no") // the tab's row order = the order jobs run in
+  day        DateTime  @db.Date
+  process    String
+  machine    String
+  prodOrder  String    @map("prod_order")
+  mc         String
+  partyCable String    @map("party_cable")
+  lot        String
+  qty        Float
+  unit       String
+  sizeCore   String    @map("size_core")
+  material   String
+  feed       String
+  feedStatus String    @map("feed_status") // CHECK: ok | drum | wait
+  job        String
+
+  @@index([issueId, rowNo])
+  @@map("card_plan")
+}
+
+// Card 2: operator and helpers per machine per shift.
+model CardLabour {
+  id        Int       @id @default(autoincrement())
+  issueId   Int       @map("issue_id")
+  issue     CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  rowNo     Int       @map("row_no")
+  day       DateTime  @db.Date
+  shift     String // CHECK: Day | Night
+  machine   String
+  operator  String?
+  helpers   String[]  @default([])
+  menNeeded Int       @map("men_needed")
+  menGiven  Int       @map("men_given")
+  note      String?
+
+  @@index([issueId, rowNo])
+  @@map("card_labour")
+}
+
+// Card 2: men on duty but not on a machine.
+model CardSpareMen {
+  issueId Int       @map("issue_id")
+  issue   CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  day     DateTime  @db.Date
+  shift   String // CHECK: Day | Night
+  men     String[]  @default([])
+
+  @@id([issueId, day, shift])
+  @@map("card_spare_men")
+}
+
+// Card 3: finished-goods drums needed per order.
+model CardDrumNeed {
+  id          Int       @id @default(autoincrement())
+  issueId     Int       @map("issue_id")
+  issue       CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  rowNo       Int       @map("row_no")
+  usedOn      DateTime  @map("used_on") @db.Date
+  readyBy     DateTime  @map("ready_by") @db.Date
+  late        Boolean   @default(false)
+  drumSize    String    @map("drum_size")
+  drumsNeeded Int       @map("drums_needed")
+  fromStock   Int       @map("from_stock")
+  toAssemble  Int       @map("to_assemble")
+  prodOrder   String    @map("prod_order")
+  partyCable  String    @map("party_cable")
+  lot         String
+  note        String?
+
+  @@index([issueId, rowNo])
+  @@map("card_drum_need")
+}
+
+// Card 4: drums to assemble per day.
+model CardDrumAssembly {
+  id            Int       @id @default(autoincrement())
+  issueId       Int       @map("issue_id")
+  issue         CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  rowNo         Int       @map("row_no")
+  assembleBy    DateTime  @map("assemble_by") @db.Date
+  was           DateTime? @db.Date // the date it should have been ready, when late
+  drumSize      String    @map("drum_size")
+  drums         Int
+  flangesNeeded Int       @map("flanges_needed")
+  flangesFrom   String    @map("flanges_from")
+  prodOrder     String    @map("prod_order")
+  partyCable    String    @map("party_cable")
+  lot           String
+  usedOn        DateTime  @map("used_on") @db.Date
+
+  @@index([issueId, rowNo])
+  @@map("card_drum_assembly")
+}
+
+// Cards 3 and 4: drum and flange stock as it was at that issue, so an old card keeps its figures.
+model CardDrumStock {
+  issueId    Int       @map("issue_id")
+  issue      CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  sizeKey    String    @map("size_key")
+  drumSize   String    @map("drum_size")
+  drums      Int?
+  flangesKgp Int?      @map("flanges_kgp")
+  flangesPp  Int?      @map("flanges_pp")
+
+  @@id([issueId, sizeKey])
+  @@map("card_drum_stock")
+}
