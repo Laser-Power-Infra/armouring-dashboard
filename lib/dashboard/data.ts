@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
+import type { QueryEnv } from "@/lib/tables/query";
 import {
   armouringPending,
   avgPerWorkingDay,
@@ -223,6 +224,12 @@ export const getLatestEntries = cache(async (machineCode: string) => {
   });
   const loadedAt = await entriesLoadedAt();
   return { rows, days: days.length, hasData: !!loadedAt, asOf: await asOf(loadedAt) };
+});
+
+/** What a table query needs beyond its params: the client, and the first shift day of the latest-entries window. */
+export const getTableEnv = cache(async (): Promise<QueryEnv> => {
+  const [today, n] = await Promise.all([getToday(), num("latest_entries_shift_days")]);
+  return { client: db, since: new Date(`${lastShiftDays(today, n ?? 7)[0]}T00:00:00Z`) };
 });
 
 /** "ARM5" -> "Armouring 5". Other codes are shown as they are. */
