@@ -3,6 +3,9 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "../../lib/generated/prisma/client.ts";
 import { armouringPending, summariseOrders, waitingBetween, waitingForLaying } from "../../lib/dashboard/calc";
 import { kgpLines, parityLines, PLANNED_CABLE } from "../fixtures/order-lines";
+import { TABLES } from "../../lib/tables/defs";
+import { defaultParams } from "../../lib/tables/params";
+import { fetchFacet, fetchRows } from "../../lib/tables/query";
 
 // Proof that the Postgres views give the same rows and km as the TypeScript rules.
 // Needs a throwaway database: this file deletes rows.
@@ -16,7 +19,7 @@ if (!url) console.warn("SKIPPED tests/db/views.test.ts: set TEST_DATABASE_URL to
 
 const CORE = new Set(["CONDUCTOR", "INSULATION"]);
 
-describe.skipIf(!url)("views match calc.ts", () => {
+describe.skipIf(!url)("database: views match calc.ts, tables page in SQL", () => {
   const db = new PrismaClient({ adapter: new PrismaNeon({ connectionString: url }) });
   const orders = summariseOrders(kgpLines);
 
@@ -28,6 +31,16 @@ describe.skipIf(!url)("views match calc.ts", () => {
     await db.orderLine.createMany({ data: parityLines.map((l) => ({ ...l, qtyUnit: CORE.has(l.stage) ? "CORE_KM" : "CABLE_KM" })) });
     // Plans match by cable name, ignoring case and outer spaces. A completed lot does not count.
     await db.lot.create({ data: { lotNo: "L1", machineCode: "ARM5", cableItem: `  ${PLANNED_CABLE.toLowerCase()} `, bobbinsNeeded: 10 } });
+    await db.productionEntry.deleteMany();
+    await db.productionEntry.createMany({
+      data: [
+        { id: "e1", prodOrders: ["P7-1"], drumNo: "D-1", qtyM: 500, enteredBy: "ravi", shift: "DAY", enteredAt: new Date("2026-11-18T05:00:00Z") },
+        { id: "e2", prodOrders: ["P7-1", "P7-2"], drumNo: "D-2", qtyM: 700, enteredBy: "ravi", shift: "NIGHT", enteredAt: new Date("2026-11-18T15:00:00Z") },
+        { id: "e3", prodOrders: [], drumNo: "50%_off", qtyM: 300, enteredBy: null, shift: "DAY", enteredAt: new Date("2026-11-17T05:00:00Z"), isDuplicate: true },
+        { id: "old", prodOrders: ["P7-9"], drumNo: "D-0", qtyM: 100, enteredBy: "ravi", shift: "DAY", enteredAt: new Date("2026-10-01T05:00:00Z") },
+        { id: "other", prodOrders: ["P7-1"], drumNo: "D-9", qtyM: 100, enteredBy: "ravi", shift: "DAY", enteredAt: new Date("2026-11-18T05:00:00Z"), machineCode: "ARM4" },
+      ].map((e) => ({ machineRaw: "ARMOURING NO- 5", machineCode: "ARM5", cable: "3.5C x 300", shiftDay: new Date(e.enteredAt.toISOString().slice(0, 10)), ...e })),
+    });
     await db.lot.create({ data: { lotNo: "L2", machineCode: "ARM5", cableItem: "3.5C x 300", bobbinsNeeded: 10, completed: true } });
   }, 60_000);
 
@@ -71,5 +84,84 @@ describe.skipIf(!url)("views match calc.ts", () => {
       SELECT (SELECT count(*) FROM order_summary WHERE prod_order LIKE 'X9%')::int
            + (SELECT count(*) FROM order_waiting WHERE prod_order LIKE 'X9%')::int AS n`;
     expect(n).toBe(0);
+  });
+
+  // ── Table queries: paging, sorting, search and filter options run in the database ──
+  const env = { client: db, since: new Date("2026-11-12T00:00:00Z") };
+  const work = TABLES["work-left"];
+  const wp = (over = {}) => ({ ...defaultParams(work, "ARM5"), ...over });
+
+  it("rows: one page, biggest first, with the full total", async () => {
+    const all = armouringPending(orders);
+    const page = await fetchRows(work, wp({ size: 5 }), env);
+    expect(page.total).toBe(all.length);
+    expect(page.rows.map((r) => r.prodOrder)).toEqual(all.slice(0, 5).map((r) => r.prodOrder));
+    expect(Object.keys(page.rows[0])).toEqual(["prodOrder", "customer", "cable", "km", "approved", "inPlan"]);
+  });
+  it("rows: page 2 continues where page 1 stopped; a page past the end is empty but keeps the total", async () => {
+    const all = armouringPending(orders).map((r) => r.prodOrder);
+    const p1 = await fetchRows(work, wp({ size: 5, sort: "prodOrder", dir: "asc" }), env);
+    const far = await fetchRows(work, wp({ size: 5, sort: "prodOrder", dir: "asc", page: 9 }), env);
+    expect(p1.rows.map((r) => r.prodOrder)).toEqual([...all].sort().slice(0, 5));
+    expect(far).toEqual({ rows: [], total: all.length });
+  });
+  it("rows: search and filters narrow rows and total together", async () => {
+    expect((await fetchRows(work, wp({ q: "planned" }), env)).rows.map((r) => r.prodOrder)).toEqual(["P7-7"]);
+    expect((await fetchRows(work, wp({ filters: { approved: ["false"] } }), env)).rows.map((r) => r.prodOrder)).toEqual(["P7-6"]);
+    expect((await fetchRows(work, wp({ filters: { customer: [""] } }), env)).rows.map((r) => r.prodOrder)).toEqual(["P7-6"]);
+    expect((await fetchRows(work, wp({ filters: { inPlan: ["true"] }, q: "acme" }), env)).total).toBe(1);
+  });
+  it("facet: a blank customer is a choice, and counts add up to the total", async () => {
+    const { options, hasMore } = await fetchFacet(work, "customer", wp(), "", 0, env);
+    expect(options).toEqual([
+      { value: "ACME", count: 2 },
+      { value: "", count: 1 },
+    ]);
+    expect(hasMore).toBe(false);
+  });
+  it("facet: counts follow the other filters and the search, but not the column's own filter", async () => {
+    const own = await fetchFacet(work, "customer", wp({ filters: { customer: ["ACME"] } }), "", 0, env);
+    expect(own.options).toHaveLength(2);
+    const other = await fetchFacet(work, "customer", wp({ filters: { approved: ["true"] } }), "", 0, env);
+    expect(other.options).toEqual([{ value: "ACME", count: 2 }]);
+    const bool = await fetchFacet(work, "approved", wp(), "", 0, env);
+    expect(bool.options).toEqual([
+      { value: "true", count: 2 },
+      { value: "false", count: 1 },
+    ]);
+  });
+  it("facet: typing in the dropdown narrows its choices", async () => {
+    expect((await fetchFacet(work, "customer", wp(), "ac", 0, env)).options).toEqual([{ value: "ACME", count: 2 }]);
+  });
+
+  const ent = TABLES.entries;
+  const ep = (over = {}) => ({ ...defaultParams(ent, "ARM5"), ...over });
+  it("entries: only this machine and the day window, newest first", async () => {
+    const { rows, total } = await fetchRows(ent, ep(), env);
+    expect(total).toBe(3);
+    expect(rows.map((r) => r.drumNo)).toEqual(["D-2", "D-1", "50%_off"]);
+    expect(rows[0]).toMatchObject({ shiftDay: "2026-11-18", prodOrders: "P7-1, P7-2", enteredAt: "2026-11-18T15:00:00.000Z", isDuplicate: false });
+  });
+  it("entries: an entry with two orders is found under either; one with none under blank", async () => {
+    expect((await fetchRows(ent, ep({ filters: { prodOrders: ["P7-2"] } }), env)).rows.map((r) => r.drumNo)).toEqual(["D-2"]);
+    expect((await fetchRows(ent, ep({ filters: { prodOrders: [""] } }), env)).rows.map((r) => r.drumNo)).toEqual(["50%_off"]);
+    expect((await fetchFacet(ent, "prodOrders", ep(), "", 0, env)).options).toEqual([
+      { value: "P7-1", count: 2 },
+      { value: "", count: 1 },
+      { value: "P7-2", count: 1 },
+    ]);
+  });
+  it("entries: % and _ in a search are ordinary characters", async () => {
+    expect((await fetchRows(ent, ep({ q: "50%_" }), env)).rows.map((r) => r.drumNo)).toEqual(["50%_off"]);
+    expect((await fetchRows(ent, ep({ q: "%" }), env)).total).toBe(1);
+  });
+  it("entries: day and shift filters", async () => {
+    expect((await fetchRows(ent, ep({ filters: { shiftDay: ["2026-11-18"], shift: ["NIGHT"] } }), env)).rows.map((r) => r.drumNo)).toEqual(["D-2"]);
+  });
+
+  it("lots: open lots of the chosen machine only", async () => {
+    const lots = TABLES.lots;
+    const { rows } = await fetchRows(lots, defaultParams(lots, "ARM5"), env);
+    expect(rows).toEqual([expect.objectContaining({ lotNo: "L1", bobbinsNeeded: 10, bobbinsWound: 0, balance: 10, approved: false })]);
   });
 });
