@@ -1,0 +1,24 @@
+---
+version: 1
+slug: "app-dashboard-machine-page-tsx"
+primary_target: "app/dashboard/[machine]/page.tsx"
+related_targets: ["app/(auth)/login/page.tsx","app/(auth)/signup/page.tsx"]
+---
+
+Scope: dashboard, login, signup. Visitor mode: Operate.
+
+Audience and job: the Kharagpur morning meeting, on a projector or TV and on laptops, deciding what the armouring machine does today. Task: read the four answers, then find the order behind a number.
+
+## Direction contract
+
+THESIS: The four meeting questions answered at headline size, in order, before any control is visible. Refuses the tile-wall dashboard where every block shouts in its own colour.
+
+OWN-WORLD: Apple-style light interface. Ground #f5f5f7, white flat panels with a hairline, ink #1d1d1f. Blue #0066cc for action and selection, indigo #5856d6 for the second series and the no-work state, red/amber/green for status only. Inter, fixed role scale, tabular figures. Radius 6px controls, 10px panels, square tables.
+
+STORY: The reader learns whether the machine has cable, whether the men produced, whether bobbins are ready and how much work is left; then opens a table to find the order behind a number.
+
+FIRST VIEWPORT: Translucent sticky bar (machine select, data-as-of, Refresh). Below it one row of four headline figures at 48px with a one-line note each. Below that the pipeline strip, left to right, chosen machine marked in blue. Primary action: the machine select, top left.
+
+FORM: Standard web product shell and controls; signature move is the pipeline strip. seed: none (pinned) — "focus in on user exeperience like apple and simplicity", "one primary colour one secondary colour", "dark mode is not required for now start with light mode", "rounded corner should not be overused".
+
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
