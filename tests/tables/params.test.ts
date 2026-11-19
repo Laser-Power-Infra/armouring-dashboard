@@ -18,8 +18,9 @@ describe("table request params", () => {
   it("blank filter value is kept: it means rows with no value", () => {
     expect(parse("machine=ARM5&f.customer=").filters).toEqual({ customer: [""] });
   });
-  it("yes/no filters accept only true and false", () => {
+  it("yes/no filters accept only true, false and blank", () => {
     expect(parse("machine=ARM5&f.approved=false").filters).toEqual({ approved: ["false"] });
+    expect(parse("machine=ARM5&f.approved=").filters).toEqual({ approved: [""] });
     expect(() => parse("machine=ARM5&f.approved=maybe")).toThrow();
   });
   it.each(["size=1000", "size=7", "page=0", "page=abc", "page=1.5", "sort=password", "dir=up", "f.km=1", "f.nope=x", "q=" + "x".repeat(201)])("rejects %s", (bad) => {

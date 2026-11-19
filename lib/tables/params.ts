@@ -61,7 +61,7 @@ export function parseTableParams(def: TableDef, sp: URLSearchParams): TableParam
     const column = def.columns.find((c) => c.key === name.slice(FILTER_PREFIX.length));
     const values = z.array(requestText).max(200).parse(sp.getAll(name));
     if (!column || !FILTER_KINDS.includes(column.kind)) throw new z.ZodError([{ code: "custom", message: "Not a filter column", path: [name], input: name }]);
-    if (column.kind === "bool" && values.some((v) => v !== "true" && v !== "false")) throw new z.ZodError([{ code: "custom", message: "Yes/no filter", path: [name], input: values }]);
+    if (column.kind === "bool" && values.some((v) => v !== "true" && v !== "false" && v !== BLANK)) throw new z.ZodError([{ code: "custom", message: "Yes/no filter", path: [name], input: values }]);
     filters[column.key] = values;
   }
   return { ...scalar, machine: scalar.machine.toUpperCase(), filters };

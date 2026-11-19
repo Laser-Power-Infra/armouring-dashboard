@@ -138,8 +138,9 @@ export function DataTable({
 
       {shown.failed && <ErrorNote message="Could not load this table. The database may be waking up." onRetry={() => setRetries((n) => n + 1)} />}
 
-      <div className="overflow-x-auto border-y border-line-2" style={{ minHeight: total ? 36 + 44 * Math.min(state.size, total) : undefined }}>
-        <table className="w-full border-collapse text-left text-label" aria-busy={loading}>
+      <div className="overflow-x-auto border-l border-t border-line-2" style={{ minHeight: total ? 36 + 44 * Math.min(state.size, total) : undefined }}>
+        {/* separate borders, not collapsed: the pinned first column keeps its lines while the table scrolls sideways */}
+        <table className="w-full border-separate border-spacing-0 text-left text-label" aria-busy={loading}>
           <caption className="sr-only">{title}</caption>
           <thead>
             <tr>
@@ -151,12 +152,12 @@ export function DataTable({
                     key={c.key}
                     scope="col"
                     aria-sort={sortKey === c.key ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
-                    className={`h-9 whitespace-nowrap bg-surface p-0 first:sticky first:left-0 first:z-10 ${right ? "text-right" : ""}`}
+                    className={`h-9 whitespace-nowrap border-b border-r border-line-2 bg-ground p-0 first:sticky first:left-0 first:z-10 ${right ? "text-right" : ""}`}
                   >
                     <button
                       type="button"
                       popoverTarget={`${menuId}-${c.key}`}
-                      className={`inline-flex h-9 items-center gap-1 rounded-control px-3 text-caption hover:bg-ground ${active ? "text-primary" : "text-ink-2"}`}
+                      className={`inline-flex h-9 items-center gap-1 rounded-control px-3 text-caption hover:bg-line-2 ${active ? "text-primary" : "text-ink-2"}`}
                     >
                       {c.label}
                       {active > 0 && <span className="num">({active})</span>}
@@ -181,11 +182,11 @@ export function DataTable({
           </thead>
           <tbody className={`transition-opacity duration-150 ${loading ? "opacity-50" : ""}`}>
             {rows.map((r, i) => (
-              <tr key={i} className="group border-t border-line-2 hover:bg-ground">
+              <tr key={i} className="group hover:bg-ground">
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`h-11 max-w-[22rem] truncate whitespace-nowrap px-3 first:sticky first:left-0 first:bg-surface first:font-medium group-hover:first:bg-ground ${c.kind === "number" ? "num text-right" : ""}`}
+                    className={`h-11 max-w-[22rem] truncate whitespace-nowrap border-b border-r border-line-2 px-3 first:sticky first:left-0 first:bg-surface first:font-medium group-hover:first:bg-ground ${c.kind === "number" ? "num text-right" : ""}`}
                   >
                     <Cell column={c} value={r[c.key]} />
                   </td>

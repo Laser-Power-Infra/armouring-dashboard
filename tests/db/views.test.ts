@@ -113,11 +113,11 @@ describe.skipIf(!url)("database: views match calc.ts, tables page in SQL", () =>
     expect((await fetchRows(work, wp({ filters: { customer: [""] } }), env)).rows.map((r) => r.prodOrder)).toEqual(["P7-6"]);
     expect((await fetchRows(work, wp({ filters: { inPlan: ["true"] }, q: "acme" }), env)).total).toBe(1);
   });
-  it("facet: a blank customer is a choice, and counts add up to the total", async () => {
+  it("facet: blank is always the first choice, and counts add up to the total", async () => {
     const { options, hasMore } = await fetchFacet(work, "customer", wp(), "", 0, env);
     expect(options).toEqual([
-      { value: "ACME", count: 2 },
       { value: "", count: 1 },
+      { value: "ACME", count: 2 },
     ]);
     expect(hasMore).toBe(false);
   });
@@ -125,12 +125,21 @@ describe.skipIf(!url)("database: views match calc.ts, tables page in SQL", () =>
     const own = await fetchFacet(work, "customer", wp({ filters: { customer: ["ACME"] } }), "", 0, env);
     expect(own.options).toHaveLength(2);
     const other = await fetchFacet(work, "customer", wp({ filters: { approved: ["true"] } }), "", 0, env);
-    expect(other.options).toEqual([{ value: "ACME", count: 2 }]);
+    // Blank stays a choice even when no row is blank under the other filters: it shows 0.
+    expect(other.options).toEqual([
+      { value: "", count: 0 },
+      { value: "ACME", count: 2 },
+    ]);
     const bool = await fetchFacet(work, "approved", wp(), "", 0, env);
     expect(bool.options).toEqual([
+      { value: "", count: 0 },
       { value: "true", count: 2 },
       { value: "false", count: 1 },
     ]);
+  });
+  it("facet: blank is offered once, on the first page of choices only", async () => {
+    expect((await fetchFacet(work, "customer", wp(), "", 50, env)).options).toEqual([]);
+    expect((await fetchRows(work, wp({ filters: { approved: [""] } }), env)).total).toBe(0);
   });
   it("facet: typing in the dropdown narrows its choices", async () => {
     expect((await fetchFacet(work, "customer", wp(), "ac", 0, env)).options).toEqual([{ value: "ACME", count: 2 }]);
@@ -148,8 +157,8 @@ describe.skipIf(!url)("database: views match calc.ts, tables page in SQL", () =>
     expect((await fetchRows(ent, ep({ filters: { prodOrders: ["P7-2"] } }), env)).rows.map((r) => r.drumNo)).toEqual(["D-2"]);
     expect((await fetchRows(ent, ep({ filters: { prodOrders: [""] } }), env)).rows.map((r) => r.drumNo)).toEqual(["50%_off"]);
     expect((await fetchFacet(ent, "prodOrders", ep(), "", 0, env)).options).toEqual([
-      { value: "P7-1", count: 2 },
       { value: "", count: 1 },
+      { value: "P7-1", count: 2 },
       { value: "P7-2", count: 1 },
     ]);
   });

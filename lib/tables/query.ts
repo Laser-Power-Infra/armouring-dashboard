@@ -73,6 +73,7 @@ export async function fetchRows(def: TableDef, p: TableParams, env: QueryEnv): P
 /**
  * The choices for one column's filter dropdown, with how many rows each would give.
  * Counted under the search and the other columns' filters, but not this column's own.
+ * "(blank)" is always the first choice, with 0 beside it when no row is blank, so every filter offers it.
  */
 export async function fetchFacet(
   def: TableDef,
@@ -89,12 +90,18 @@ export async function fetchFacet(
   const value = c.array
     ? Prisma.sql`unnest(CASE WHEN cardinality(${arr}) = 0 THEN ARRAY['']::text[] ELSE ${arr} END)`
     : Prisma.sql`coalesce((${ident(def, column)})::text, '')`;
-  const narrowed = oq ? Prisma.sql`WHERE value ILIKE ${contains(oq)} ESCAPE '\\'` : Prisma.empty;
-  const found = await env.client.$queryRaw<FacetOption[]>(Prisma.sql`
-    SELECT value, count(*)::int AS count
-    FROM (SELECT ${value} AS value FROM ${source} WHERE ${buildWhere(def, p, column)}) f
-    ${narrowed}
-    GROUP BY value ORDER BY count DESC, value ASC
-    LIMIT ${FACET_PAGE + 1} OFFSET ${offset}`);
-  return { options: found.slice(0, FACET_PAGE), hasMore: found.length > FACET_PAGE };
+  const values = Prisma.sql`(SELECT ${value} AS value FROM ${source} WHERE ${buildWhere(def, p, column)}) f`;
+  const narrowed = oq ? Prisma.sql`AND value ILIKE ${contains(oq)} ESCAPE '\\'` : Prisma.empty;
+  // Blank leads the first page of choices. It never matches a typed search.
+  const leading = offset === 0 && !oq;
+  const [found, blank] = await Promise.all([
+    env.client.$queryRaw<FacetOption[]>(Prisma.sql`
+      SELECT value, count(*)::int AS count FROM ${values}
+      WHERE value <> '' ${narrowed}
+      GROUP BY value ORDER BY count DESC, value ASC
+      LIMIT ${FACET_PAGE + 1} OFFSET ${offset}`),
+    leading ? env.client.$queryRaw<{ count: number }[]>(Prisma.sql`SELECT count(*)::int AS count FROM ${values} WHERE value = ''`) : null,
+  ]);
+  const options = found.slice(0, FACET_PAGE);
+  return { options: blank ? [{ value: BLANK, count: blank[0].count }, ...options] : options, hasMore: found.length > FACET_PAGE };
 }
