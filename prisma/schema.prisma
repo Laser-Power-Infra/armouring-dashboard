@@ -1,0 +1,250 @@
+// Tables per Armouring_5_Dashboard_Flow_and_Rules.md (Rev 3).
+// No enums: allowed values are String columns + CHECK constraints in the migration SQL.
+// Never `prisma db push`. Schema changes go through migration files only.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+  // .ts import extensions so prisma/seed.ts runs on plain Node 24 (type stripping), no tsx.
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Auth ────────────────────────────────────────────────────────────────
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique // stored lowercased
+  name         String?
+  passwordHash String?   @map("password_hash") // null for Google-only accounts
+  role         String    @default("viewer") // CHECK: viewer | admin
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+
+  @@map("users")
+}
+
+// ── Operational (md §4, §7.5, §8) ───────────────────────────────────────
+model Setting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedBy   String?  @map("updated_by")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("settings")
+}
+
+model RefreshLog {
+  id          BigInt    @id @default(autoincrement())
+  job         String
+  source      String
+  startedAt   DateTime  @map("started_at") @db.Timestamptz
+  finishedAt  DateTime? @map("finished_at") @db.Timestamptz
+  rows        Int?
+  status      String // CHECK: running | ok | error | skipped
+  error       String?
+  triggeredBy String?   @map("triggered_by")
+
+  @@index([source, startedAt])
+  @@map("refresh_log")
+}
+
+model Alert {
+  id              BigInt    @id @default(autoincrement())
+  rule            String
+  machineCode     String    @map("machine_code")
+  message         String
+  payload         Json?
+  firstSeen       DateTime  @default(now()) @map("first_seen") @db.Timestamptz
+  lastSeen        DateTime  @default(now()) @map("last_seen") @db.Timestamptz
+  sentAt          DateTime? @map("sent_at") @db.Timestamptz
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz
+  escalationLevel Int       @default(0) @map("escalation_level")
+
+  // Partial unique (rule, machine_code) WHERE resolved_at IS NULL lives in the migration SQL.
+  @@map("alerts")
+}
+
+// "ARMOURING NO- 5" (production entries), "AR005" (ERP) -> "ARM5"
+model MachineAlias {
+  alias       String @id
+  machineCode String @map("machine_code")
+
+  @@map("machine_alias")
+}
+
+// ── SFG dashboard sources (md §3) ───────────────────────────────────────
+model OrderLine {
+  prodOrder     String   @map("prod_order")
+  stage         String
+  sfgItem       String   @map("sfg_item")
+  customer      String?
+  cable         String?
+  coresPerCable Float?   @map("cores_per_cable")
+  orderedQty    Float    @map("ordered_qty")
+  doneQty       Float    @map("done_qty")
+  qtyUnit       String   @map("qty_unit") // CHECK: CORE_KM | CABLE_KM
+  approved      Boolean?
+  loadedAt      DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@id([prodOrder, stage, sfgItem])
+  @@map("order_lines")
+}
+
+model ProductionEntry {
+  id           String   @id
+  machineRaw   String   @map("machine_raw")
+  machineCode  String   @map("machine_code")
+  prodOrderRaw String?  @map("prod_order_raw") // may hold two order numbers
+  prodOrders   String[] @default([]) @map("prod_orders")
+  cable        String?
+  drumNo       String?  @map("drum_no")
+  qtyM         Float    @map("qty_m")
+  enteredAt    DateTime @map("entered_at") @db.Timestamptz
+  enteredBy    String?  @map("entered_by")
+  shiftDay     DateTime @map("shift_day") @db.Date
+  shift        String // CHECK: DAY | NIGHT
+  isDuplicate  Boolean  @default(false) @map("is_duplicate") // same drum twice on one machine
+  loadedAt     DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@index([machineCode, shiftDay])
+  @@map("production_entries")
+}
+
+model MenPosted {
+  date     DateTime @db.Date
+  shift    String
+  empCode  String   @map("emp_code")
+  costCode String   @map("cost_code")
+  name     String?
+  loadedAt DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@id([date, shift, empCode, costCode])
+  @@map("men_posted")
+}
+
+// N.D. batches are dropped by the loader (md §7.1), never stored.
+model Stock {
+  id       BigInt    @id @default(autoincrement())
+  itemCode String    @map("item_code")
+  item     String?
+  batch    String?
+  godown   String?
+  qty      Float
+  mfgDate  DateTime? @map("mfg_date") @db.Date
+  isDead   Boolean   @default(false) @map("is_dead")
+  loadedAt DateTime  @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@index([itemCode])
+  @@map("stock")
+}
+
+// ── Google Sheets sources (md §3) ───────────────────────────────────────
+model SfgUnconsumed {
+  id           BigInt   @id @default(autoincrement())
+  prodOrder    String   @map("prod_order")
+  stage        String
+  prevStage    String?  @map("prev_stage")
+  item         String?
+  customer     String?
+  unconsumedKm Float    @map("unconsumed_km")
+  loadedAt     DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@index([stage])
+  @@map("sfg_unconsumed")
+}
+
+model PlanJob {
+  machineCode  String    @map("machine_code")
+  rowNo        Int       @map("row_no")
+  planDate     DateTime? @map("plan_date") @db.Date
+  cableItem    String?   @map("cable_item")
+  armourType   String?   @map("armour_type")
+  armourSize   String?   @map("armour_size")
+  cableLengthM Float?    @map("cable_length_m")
+  priority     Int?
+  markComplete Boolean   @default(false) @map("mark_complete")
+  loadedAt     DateTime  @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@id([machineCode, rowNo])
+  @@map("plan_jobs")
+}
+
+model Lot {
+  lotNo         String   @id @map("lot_no")
+  machineCode   String   @map("machine_code")
+  cableItem     String?  @map("cable_item")
+  armourType    String?  @map("armour_type")
+  armourSize    String?  @map("armour_size")
+  bobbinsNeeded Int      @map("bobbins_needed")
+  bobbinsWound  Int      @default(0) @map("bobbins_wound")
+  approved      Boolean  @default(false)
+  completed     Boolean  @default(false)
+  priority      Int?
+  loadedAt      DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@map("lots")
+}
+
+model BobbinLog {
+  date            DateTime @db.Date
+  shift           String
+  bobbinNo        String   @map("bobbin_no")
+  offTime         String   @map("off_time") // HH:MM as entered
+  spoolingMachine String?  @map("spooling_machine")
+  operator        String?
+  lotNo           String?  @map("lot_no")
+  item            String?
+  turns           Int?
+  outerDiaMm      Float?   @map("outer_dia_mm")
+  lengthM         Float?   @map("length_m")
+  weightKg        Float?   @map("weight_kg")
+  loadedAt        DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@id([date, shift, bobbinNo, offTime])
+  @@map("bobbin_log")
+}
+
+model BobbinStatus {
+  date     DateTime @db.Date
+  state    String // loaded, filled, empty, badly wound, workshop, broken
+  item     String   @default("")
+  count    Int
+  loadedAt DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@id([date, state, item])
+  @@map("bobbin_status")
+}
+
+model BobbinsOwned {
+  fromDate DateTime @id @map("from_date") @db.Date
+  owned    Int
+  loadedAt DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@map("bobbins_owned")
+}
+
+model MachineSpeed {
+  machineCode String   @id @map("machine_code")
+  stage       String?
+  kmPerDay    Float    @map("km_per_day")
+  daysPerWeek Int?     @map("days_per_week")
+  loadedAt    DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@map("machine_speeds")
+}
+
+model MachineDaily {
+  machineCode  String   @id @map("machine_code")
+  name         String?
+  erpCostCode  String?  @map("erp_cost_code")
+  mustRun      Boolean  @default(false) @map("must_run")
+  shiftsPerDay Int?     @map("shifts_per_day")
+  menPerShift  Int?     @map("men_per_shift")
+  loadedAt     DateTime @default(now()) @map("loaded_at") @db.Timestamptz
+
+  @@map("machine_daily")
+}

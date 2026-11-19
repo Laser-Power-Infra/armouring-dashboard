@@ -7,12 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@prisma/adapter-neon": "7.10.1",
+    "@prisma/client": "7.10.1",
     "googleapis": "^190.0.0",
     "next": "16.4.6",
     "next-auth": "^5.0.0-beta.32",
+    "prisma": "7.10.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "^4.6.7"
