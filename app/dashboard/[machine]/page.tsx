@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { auth, signOut } from "@/auth";
 import { getMachines, machineLabel } from "@/lib/dashboard/data";
 import { BlockBoundary } from "@/components/dash/block-boundary";
+import { MainNav } from "@/components/dash/main-nav";
 import { MachinePicker, RefreshButton } from "@/components/dash/top-bar-controls";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/feedback";
@@ -50,18 +51,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
       <header className="sticky top-0 z-20 border-b border-line-2 bg-surface/75 backdrop-blur-xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-surface [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none">
         <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
           <span className="hidden text-body font-semibold sm:inline">Kharagpur</span>
+          <MainNav active="/dashboard/arm5" />
           <MachinePicker current={machineCode} machines={machines} />
-          <nav aria-label="Jump to" className="ml-2 hidden gap-1 md:flex">
-            {jump.map((j) => (
-              <a key={j.href} href={j.href} className={jumpLink}>
-                {j.label}
-              </a>
-            ))}
-          </nav>
           <div className="ml-auto flex items-center gap-2">
-            <Link href="/cards/production" className={buttonClass("quiet")}>
-              Cards
-            </Link>
             <RefreshButton />
             {!session ? (
               <Link href="/login" className={buttonClass("secondary")}>
@@ -93,8 +85,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
             )}
           </div>
         </div>
-        {/* phones: the jump links scroll sideways under the bar */}
-        <nav aria-label="Jump to" className="flex gap-1 overflow-x-auto px-3 pb-2 md:hidden">
+        {/* Jump links sit under the bar and scroll sideways on a phone */}
+        <nav aria-label="Jump to" className="flex gap-1 overflow-x-auto px-3 pb-2 sm:px-5">
           {jump.map((j) => (
             <a key={j.href} href={j.href} className={jumpLink}>
               {j.label}

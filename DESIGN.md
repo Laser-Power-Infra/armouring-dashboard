@@ -366,6 +366,10 @@ The signature picture: the plant line from left to right, with the cable waiting
 - **Table view:** every chart has a "Show as table" disclosure under it with the same numbers.
 - **Split bar:** one 12px square bar divided into parts, with a legend that names every part and gives its number.
 
+### KGP Cards (a fixed look of their own)
+
+The four card pages under `/cards` do not use this system inside the card. Their look was approved by the MD on 18-Nov-26 and is fixed by `docs/KGP_4_Cards_Build_Spec.md` section 2.2: Roboto 400/700 at 9pt, blue `#1c3a6b`, light blue `#dfe7f3`, attention orange `#c2410c`, calendar green `#2e7d32` and yellow `#fde047`, every cell bordered, A4 landscape. The rules live in `app/cards/cards.css`, scoped to `.kgp-card`, so nothing leaks into the dashboard. Only the bar above the card (tabs, version select, Print) uses this system. Do not restyle a card to match the dashboard; change the build spec first.
+
 ## Do's and Don'ts
 
 ### Do:

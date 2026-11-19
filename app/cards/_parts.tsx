@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { ddMonYy } from "@/lib/cards/calendar";
 import type { CalCell } from "@/lib/cards/calendar";
 import { getIssues, issueName, type Issue } from "@/lib/cards/data";
-import { buttonClass } from "@/components/ui/button";
+import { MainNav } from "@/components/dash/main-nav";
 import { IssuePicker, PrintButton } from "./_controls";
 
 export const CARD_TABS = [
@@ -35,25 +34,15 @@ export const loadedText = (issue: Issue) =>
 /** The app bar with the four card tabs, then the card itself. `variant` picks the card's calendar sizes. */
 export function CardShell({ active, picked, variant = "", children }: { active: (typeof CARD_TABS)[number]["href"]; picked: { issue: Issue; issues: Issue[] } | null; variant?: "" | "labour" | "drums"; children?: ReactNode }) {
   const query = picked && picked.issue.id !== picked.issues[0].id ? `?issue=${picked.issue.id}` : "";
-  const tab = "inline-flex h-8 shrink-0 items-center rounded-control px-2.5 text-label hover:bg-ground";
   return (
     <>
       <header className="no-print sticky top-0 z-20 border-b border-line-2 bg-surface">
         <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 sm:px-6">
-          <span className="text-body font-semibold">Kharagpur cards</span>
-          <nav aria-label="Cards" className="flex gap-1 overflow-x-auto">
-            {CARD_TABS.map((t) => (
-              <Link key={t.href} href={`${t.href}${query}`} aria-current={t.href === active ? "page" : undefined} className={`${tab} ${t.href === active ? "bg-primary-tint font-medium text-primary" : "text-ink-2 hover:text-ink"}`}>
-                {t.label}
-              </Link>
-            ))}
-          </nav>
+          <span className="hidden text-body font-semibold sm:inline">Kharagpur</span>
+          <MainNav active={active} query={query} />
           <div className="ml-auto flex items-center gap-2">
             {picked && <IssuePicker current={picked.issue.id} issues={picked.issues.map((i) => ({ id: i.id, name: issueName(i) }))} />}
             {picked && <PrintButton />}
-            <Link href="/dashboard/arm5" className={buttonClass("quiet")}>
-              Dashboard
-            </Link>
           </div>
         </div>
       </header>
