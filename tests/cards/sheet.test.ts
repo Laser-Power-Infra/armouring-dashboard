@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 import {
   parseCardPlan,
@@ -12,8 +12,8 @@ import {
   sizeKey,
 } from "../../lib/cards/sheet";
 
-// The six tabs as read from the sheet on 19-Nov-26 (version "17-Nov R2 plan").
-export const fixture = (name: string): unknown[][] => JSON.parse(readFileSync(`tests/fixtures/cards/${name}.json`, "utf8"));
+
+import { fixture } from "./testdb";
 
 describe("card sheet parsing", () => {
   it("reads a day as text, with a late mark, or as a Sheets serial number", () => {
