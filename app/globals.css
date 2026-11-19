@@ -14,6 +14,8 @@
   --primary-tint: #e8f1fb;
   --secondary: #5856d6;
   --secondary-tint: #eeeefb;
+  /* chart series only: lighter than the primary, so the two series still differ on a washed-out projector or in grey */
+  --secondary-soft: #908ee8;
 
   /* status: always paired with a text label, never colour alone */
   --critical: #d70015;
@@ -37,6 +39,7 @@
   --color-primary-tint: var(--primary-tint);
   --color-secondary: var(--secondary);
   --color-secondary-tint: var(--secondary-tint);
+  --color-secondary-soft: var(--secondary-soft);
   --color-critical: var(--critical);
   --color-critical-bg: var(--critical-bg);
   --color-warning: var(--warning);
@@ -90,6 +93,11 @@ body {
   -webkit-font-smoothing: antialiased;
   accent-color: var(--primary);
   caret-color: var(--primary);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
 ::selection {

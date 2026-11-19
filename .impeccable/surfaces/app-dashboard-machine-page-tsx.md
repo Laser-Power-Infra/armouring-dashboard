@@ -11,9 +11,9 @@ Audience and job: the Kharagpur morning meeting, on a projector or TV and on lap
 
 ## Direction contract
 
-THESIS: The four meeting questions answered at headline size, in order, before any control is visible. Refuses the tile-wall dashboard where every block shouts in its own colour.
+THESIS: The four meeting questions answered at headline size, in order, before any table or table control. Refuses the tile-wall dashboard where every block shouts in its own colour.
 
-OWN-WORLD: Apple-style light interface. Ground #f5f5f7, white flat panels with a hairline, ink #1d1d1f. Blue #0066cc for action and selection, indigo #5856d6 for the second series and the no-work state, red/amber/green for status only. Inter, fixed role scale, tabular figures. Radius 6px controls, 10px panels, square tables.
+OWN-WORLD: Apple-style light interface. Ground #f5f5f7, white flat panels with a hairline, ink #1d1d1f. Blue #0066cc for action and selection, indigo #5856d6 for the no-work state, and a lighter indigo #908ee8 for the second chart series, red/amber/green for status only. Inter, fixed role scale, tabular figures. Radius 6px controls, 10px panels, square tables.
 
 STORY: The reader learns whether the machine has cable, whether the men produced, whether bobbins are ready and how much work is left; then opens a table to find the order behind a number.
 

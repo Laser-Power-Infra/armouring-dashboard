@@ -56,13 +56,16 @@ export function SearchInput({
   onSubmit,
   pending,
   label,
+  placeholder = "Search",
   className = "",
 }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit?: () => void;
   pending?: boolean;
+  /** What a screen reader hears; the box itself shows the short placeholder. */
   label: string;
+  placeholder?: string;
   className?: string;
 }) {
   return (
@@ -74,7 +77,7 @@ export function SearchInput({
         type="search"
         value={value}
         aria-label={label}
-        placeholder={label}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && onSubmit?.()}
         className={`${control} px-8 [&::-webkit-search-cancel-button]:hidden`}

@@ -85,14 +85,14 @@ export async function MenVsProduction({ machineCode }: { machineCode: string }) 
             unit="km"
             legend={[
               { name: "Day shift", color: "--primary" },
-              { name: "Night shift", color: "--secondary" },
+              { name: "Night shift", color: "--secondary-soft" },
             ]}
             bars={out.chart.map((d) => ({
               key: d.day,
               axis: axisDay(d.day),
               segments: [
                 { name: "Day shift", value: d.dayKm, color: "--primary" },
-                { name: "Night shift", value: d.nightKm, color: "--secondary" },
+                { name: "Night shift", value: d.nightKm, color: "--secondary-soft" },
               ],
               sub: d.menDay + d.menNight ? int(d.menDay + d.menNight) : "",
               tip: (

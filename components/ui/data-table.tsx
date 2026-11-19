@@ -181,11 +181,11 @@ export function DataTable({
           </thead>
           <tbody className={`transition-opacity duration-150 ${loading ? "opacity-50" : ""}`}>
             {rows.map((r, i) => (
-              <tr key={i} className="border-t border-line-2 hover:bg-ground">
+              <tr key={i} className="group border-t border-line-2 hover:bg-ground">
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`h-11 max-w-[22rem] truncate whitespace-nowrap bg-inherit px-3 first:sticky first:left-0 first:bg-surface first:font-medium ${c.kind === "number" ? "num text-right" : ""}`}
+                    className={`h-11 max-w-[22rem] truncate whitespace-nowrap px-3 first:sticky first:left-0 first:bg-surface first:font-medium group-hover:first:bg-ground ${c.kind === "number" ? "num text-right" : ""}`}
                   >
                     <Cell column={c} value={r[c.key]} />
                   </td>
@@ -313,6 +313,7 @@ function ColumnMenu({
             <SearchInput
               className="mb-1.5"
               label={`Find ${column.label.toLowerCase()}`}
+              placeholder={`Find ${column.label.toLowerCase()}`}
               value={oq}
               pending={facet.state === "loading"}
               onChange={(v) => {

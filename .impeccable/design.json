@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T00:00:00Z",
+  "title": "Design System: Armouring Dashboard",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Action Blue", "canonical": "#0066cc", "tonalRamp": ["#001a33", "#003366", "#004c99", "#0066cc", "#3385d6", "#80b3e6", "#bfd9f2", "#e8f1fb"] },
+      "primary-tint": { "role": "primary", "displayName": "Blue Tint", "canonical": "#e8f1fb", "tonalRamp": ["#0d2740", "#1a4673", "#2e6aa6", "#5b93cc", "#8fb8e0", "#bdd6ef", "#d6e6f6", "#e8f1fb"] },
+      "secondary": { "role": "secondary", "displayName": "Night Indigo", "canonical": "#5856d6", "tonalRamp": ["#16153a", "#2b2a70", "#4140a3", "#5856d6", "#7c7ae0", "#a7a6ea", "#d0cff4", "#eeeefb"] },
+      "secondary-soft": { "role": "secondary", "displayName": "Soft Indigo", "canonical": "#908ee8", "tonalRamp": ["#16153a", "#2b2a70", "#4140a3", "#5856d6", "#7c7ae0", "#908ee8", "#d0cff4", "#eeeefb"] },
+      "secondary-tint": { "role": "secondary", "displayName": "Indigo Tint", "canonical": "#eeeefb", "tonalRamp": ["#1c1c40", "#343373", "#5352a6", "#7c7bcc", "#a3a2e0", "#c6c6ef", "#dcdcf6", "#eeeefb"] },
+      "critical": { "role": "tertiary", "displayName": "Critical Red", "canonical": "#d70015", "tonalRamp": ["#330005", "#66000a", "#9e000f", "#d70015", "#e53e4e", "#f08a93", "#f8c5ca", "#ffe9eb"] },
+      "critical-bg": { "role": "tertiary", "displayName": "Critical Background", "canonical": "#ffe9eb", "tonalRamp": ["#40060b", "#731822", "#a63a45", "#cc6b74", "#e39aa1", "#f2c1c5", "#fad7da", "#ffe9eb"] },
+      "warning": { "role": "tertiary", "displayName": "Warning Amber", "canonical": "#b25000", "tonalRamp": ["#2e1500", "#592800", "#853c00", "#b25000", "#cc7a33", "#e0a875", "#f2d3b5", "#fff2e2"] },
+      "warning-bg": { "role": "tertiary", "displayName": "Warning Background", "canonical": "#fff2e2", "tonalRamp": ["#402507", "#73461a", "#a66f38", "#cc9a66", "#e3bd94", "#f2d7b9", "#fae6d0", "#fff2e2"] },
+      "good": { "role": "tertiary", "displayName": "Good Green", "canonical": "#248a3d", "tonalRamp": ["#092410", "#12451f", "#1b682e", "#248a3d", "#52a666", "#8cc499", "#c2e2c9", "#e6f6ea"] },
+      "good-bg": { "role": "tertiary", "displayName": "Good Background", "canonical": "#e6f6ea", "tonalRamp": ["#0d2913", "#215230", "#427d52", "#6ea67d", "#9cc7a7", "#c1e0c8", "#d6eedb", "#e6f6ea"] },
+      "ground": { "role": "neutral", "displayName": "Ground", "canonical": "#f5f5f7", "tonalRamp": ["#1d1d1f", "#3a3a3d", "#5c5c61", "#86868b", "#aeaeb3", "#d2d2d7", "#e8e8ed", "#f5f5f7"] },
+      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "#ffffff", "tonalRamp": ["#1d1d1f", "#424245", "#6e6e73", "#98989d", "#c2c2c7", "#e8e8ed", "#f5f5f7", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1d1d1f", "tonalRamp": ["#1d1d1f", "#333336", "#4a4a4e", "#6e6e73", "#98989d", "#c2c2c7", "#e8e8ed", "#f5f5f7"] },
+      "ink-2": { "role": "neutral", "displayName": "Ink 2", "canonical": "#6e6e73", "tonalRamp": ["#1d1d1f", "#38383b", "#535357", "#6e6e73", "#939398", "#b8b8bd", "#dcdce0", "#f2f2f4"] },
+      "ink-3": { "role": "neutral", "displayName": "Ink 3", "canonical": "#75757a", "tonalRamp": ["#1f1f21", "#3b3b3e", "#58585c", "#75757a", "#98989d", "#bbbbc0", "#dedee2", "#f3f3f5"] },
+      "line": { "role": "neutral", "displayName": "Line", "canonical": "#d2d2d7", "tonalRamp": ["#232326", "#46464a", "#6b6b70", "#8f8f95", "#b1b1b7", "#d2d2d7", "#e4e4e8", "#f3f3f5"] },
+      "line-2": { "role": "neutral", "displayName": "Line 2", "canonical": "#e8e8ed", "tonalRamp": ["#26262a", "#4b4b50", "#727278", "#99999f", "#bebec4", "#d9d9de", "#e8e8ed", "#f6f6f8"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline figure", "purpose": "The four answers at the top of the dashboard, read from across the room. Nothing else." },
+      "figure": { "displayName": "Figure", "purpose": "The main number inside a panel." },
+      "page": { "displayName": "Page title", "purpose": "The machine name and the auth page titles." },
+      "title": { "displayName": "Panel title", "purpose": "A panel's title and the daily totals in the latest-entries strip." },
+      "body": { "displayName": "Body", "purpose": "Input text, full sentences, units after a headline figure, sub-headings inside a panel at weight 600." },
+      "label": { "displayName": "Label", "purpose": "Table cells, button text and field labels at weight 500, notes, menu items." },
+      "caption": { "displayName": "Caption", "purpose": "Column headers, badges, Data as of lines, chart axis labels and footnotes." }
+    },
+    "shadows": [
+      { "name": "floating", "value": "0 8px 28px rgb(0 0 0 / 0.14)", "purpose": "Only for things that float above the page for a moment: column menu, account menu, chart tooltip." }
+    ],
+    "motion": [
+      { "name": "press", "value": "transform scale(0.97), 150ms ease-out", "purpose": "Button feedback on pointer-down. Off with reduced motion." },
+      { "name": "state", "value": "150ms ease-out", "purpose": "Background, border and opacity changes on controls; table rows fading to 50% while a page loads." },
+      { "name": "disclosure", "value": "transform rotate(90deg), 150ms ease", "purpose": "The chevron on Show as table. Off with reduced motion." },
+      { "name": "wait", "value": "spin and pulse, browser defaults", "purpose": "Spinner and skeleton bars. Both stop with reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "tables-two-across", "value": "1440px" },
+      { "name": "tables-three-across", "value": "2200px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of a view: Sign in, Create account.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Sign in</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 6px; font: 500 0.875rem/1.25rem Inter, system-ui, sans-serif; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out; } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; } .ds-btn-primary { background: var(--primary); color: #fff; } .ds-btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, black); } @media (prefers-reduced-motion: reduce) { .ds-btn { transition: none; } .ds-btn:active { transform: none; } }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default button: Previous, Next, Try again.",
+      "html": "<button class=\"ds-btn2\">Next</button>",
+      "css": ".ds-btn2 { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 500 0.875rem/1.25rem Inter, system-ui, sans-serif; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out; } .ds-btn2:hover { background: var(--ground); border-color: var(--ink-3); } .ds-btn2:active { transform: scale(0.97); } .ds-btn2:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "A low-weight action: Refresh, Clear filters.",
+      "html": "<button class=\"ds-btn3\">Refresh</button>",
+      "css": ".ds-btn3 { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--primary); font: 500 0.875rem/1.25rem Inter, system-ui, sans-serif; cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-btn3:hover { background: var(--primary-tint); } .ds-btn3:active { transform: scale(0.97); } .ds-btn3:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A text input with its visible label above.",
+      "html": "<label class=\"ds-field\">Email<input class=\"ds-input\" type=\"email\" placeholder=\"name@example.com\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; width: 280px; color: var(--ink-2); font: 500 0.875rem/1.25rem Inter, system-ui, sans-serif; } .ds-input { height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 400 1rem/1.5rem Inter, system-ui, sans-serif; transition: border-color 150ms; } .ds-input::placeholder { color: var(--ink-3); } .ds-input:hover { border-color: var(--ink-3); } .ds-input:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Table search. Sends to the server 700 ms after typing stops.",
+      "html": "<span class=\"ds-search\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input class=\"ds-search-input\" type=\"search\" placeholder=\"Search cable ready\" aria-label=\"Search cable ready\"></span>",
+      "css": ".ds-search { position: relative; display: block; width: 288px; color: var(--ink-2); } .ds-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; } .ds-search-input { width: 100%; height: 36px; padding: 0 32px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 400 1rem/1.5rem Inter, system-ui, sans-serif; transition: border-color 150ms; } .ds-search-input::placeholder { color: var(--ink-3); } .ds-search-input:hover { border-color: var(--ink-3); } .ds-search-input:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge-critical",
+      "description": "A status word on its pale status colour. Normal states are plain grey text instead.",
+      "html": "<span class=\"ds-badge ds-badge-critical\">Entered twice</span> <span class=\"ds-badge ds-badge-warning\">Not approved</span> <span class=\"ds-badge ds-badge-good\">On time</span> <span class=\"ds-badge ds-badge-neutral\">Draft</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; white-space: nowrap; padding: 2px 6px; border-radius: 6px; font: 500 0.75rem/1rem Inter, system-ui, sans-serif; letter-spacing: 0.01em; } .ds-badge-critical { background: var(--critical-bg); color: var(--critical); } .ds-badge-warning { background: var(--warning-bg); color: var(--warning); } .ds-badge-good { background: var(--good-bg); color: var(--good); } .ds-badge-neutral { background: var(--ground); color: var(--ink-2); }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "One dashboard block: title, subtitle, its own Data as of time, then a labelled figure.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\"><div class=\"ds-panel-titles\"><h2 class=\"ds-panel-title\">Cable ready for Armouring 5</h2><p class=\"ds-panel-sub\">Inner sheath done, armouring not done. Biggest first.</p></div><span class=\"ds-panel-asof\">Data as of 19 Nov, 12:51</span></header><div class=\"ds-stat-label\">Ready</div><div class=\"ds-stat-value\">174.5<span class=\"ds-stat-unit\">km</span></div></section>",
+      "css": ".ds-panel { width: 460px; padding: 24px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); color: var(--ink); font-family: Inter, system-ui, sans-serif; } .ds-panel-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; } .ds-panel-titles { flex: 1; min-width: 0; } .ds-panel-title { margin: 0; font-size: 1.25rem; line-height: 1.625rem; font-weight: 600; letter-spacing: -0.01em; } .ds-panel-sub { margin: 2px 0 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-2); } .ds-panel-asof { font-size: 0.75rem; line-height: 1rem; font-weight: 500; letter-spacing: 0.01em; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-stat-label { font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-2); } .ds-stat-value { margin-top: 4px; font-size: 2.125rem; line-height: 2.375rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } .ds-stat-unit { margin-left: 6px; font-size: 1rem; font-weight: 500; letter-spacing: 0; color: var(--ink-2); }"
+    },
+    {
+      "name": "Headline Answer",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "One of the four answers at the top of the dashboard, at 48px, directly on the ground.",
+      "html": "<a class=\"ds-answer\" href=\"#cable\"><div class=\"ds-answer-label\">Cable ready for the machine</div><div class=\"ds-answer-value\">50<span class=\"ds-answer-unit\">days</span></div><div class=\"ds-answer-note\">174.5 km across 51 orders</div></a>",
+      "css": ".ds-answer { display: block; min-width: 260px; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0; color: var(--ink); text-decoration: none; font-family: Inter, system-ui, sans-serif; } .ds-answer:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 6px; } .ds-answer-label, .ds-answer-note { font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-2); } .ds-answer-value { margin: 4px 0; font-size: 3rem; line-height: 3.25rem; font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; } .ds-answer-unit { margin-left: 6px; font-size: 1rem; font-weight: 500; letter-spacing: 0; color: var(--ink-2); }"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "Square, hairline-ruled table. Each header is a button that opens the column menu; one page is held in the browser.",
+      "html": "<table class=\"ds-table\"><thead><tr><th><button class=\"ds-th\">Order <svg width=\"10\" height=\"10\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\"/></svg></button></th><th><button class=\"ds-th ds-th-active\">Customer (1) <svg width=\"10\" height=\"10\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\"/></svg></button></th><th class=\"ds-num\"><button class=\"ds-th\">km <svg width=\"10\" height=\"10\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14m-5-5 5 5 5-5\"/></svg></button></th><th><button class=\"ds-th\">Approved</button></th></tr></thead><tbody><tr><td>P7-2402</td><td>Northern Transmission</td><td class=\"ds-num\">10.34</td><td class=\"ds-muted\">Approved</td></tr><tr><td>P7-2442</td><td>Eastern Grid Corp</td><td class=\"ds-num\">7.29</td><td><span class=\"ds-table-badge\">Not approved</span></td></tr><tr><td>P7-2439</td><td class=\"ds-dash\">&ndash;</td><td class=\"ds-num\">5.89</td><td class=\"ds-muted\">Approved</td></tr></tbody></table>",
+      "css": ".ds-table { width: 520px; border-collapse: collapse; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); text-align: left; background: var(--surface); color: var(--ink); font: 400 0.875rem/1.25rem Inter, system-ui, sans-serif; } .ds-table th { height: 36px; padding: 0; white-space: nowrap; } .ds-th { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font: 500 0.75rem/1rem Inter, system-ui, sans-serif; letter-spacing: 0.01em; cursor: pointer; } .ds-th:hover { background: var(--ground); } .ds-th:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; } .ds-th-active { color: var(--primary); } .ds-table td { height: 44px; padding: 0 12px; white-space: nowrap; } .ds-table tbody tr { border-top: 1px solid var(--line-2); } .ds-table tbody tr:hover { background: var(--ground); } .ds-table td:first-child { font-weight: 500; } .ds-num { text-align: right; font-variant-numeric: tabular-nums; } .ds-muted { color: var(--ink-2); } .ds-dash { color: var(--ink-3); } .ds-table-badge { display: inline-flex; padding: 2px 6px; border-radius: 6px; background: var(--warning-bg); color: var(--warning); font-size: 0.75rem; line-height: 1rem; font-weight: 500; letter-spacing: 0.01em; }"
+    },
+    {
+      "name": "Column Menu",
+      "kind": "custom",
+      "refersTo": "popover",
+      "description": "Opens under a column header: sort both ways, then filter choices fetched from the server with counts.",
+      "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item ds-menu-item-on\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 19V5m-5 5 5-5 5 5\"/></svg>Sort ascending</button><button class=\"ds-menu-item\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14m-5-5 5 5 5-5\"/></svg>Sort descending</button><div class=\"ds-menu-filter\"><label class=\"ds-menu-check\"><input type=\"checkbox\" checked><span>Eastern Grid Corp</span><span class=\"ds-menu-count\">9</span></label><label class=\"ds-menu-check\"><input type=\"checkbox\"><span>Harbour Infra</span><span class=\"ds-menu-count\">7</span></label><label class=\"ds-menu-check\"><input type=\"checkbox\"><span>Metro Works Ltd</span><span class=\"ds-menu-count\">4</span></label></div></div>",
+      "css": ".ds-menu { width: 256px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); box-shadow: 0 8px 28px rgb(0 0 0 / 0.14); font: 400 0.875rem/1.25rem Inter, system-ui, sans-serif; } .ds-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; } .ds-menu-item:hover { background: var(--ground); } .ds-menu-item:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; } .ds-menu-item-on { color: var(--primary); } .ds-menu-filter { margin-top: 6px; padding: 6px 8px 0; border-top: 1px solid var(--line-2); } .ds-menu-check { display: flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; } .ds-menu-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); } .ds-menu-check span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-menu-count { color: var(--ink-2); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Pipeline Strip",
+      "kind": "custom",
+      "refersTo": "step-chip",
+      "description": "The plant line, left to right, with the cable waiting in front of each step. Chosen machine in blue, slowest step in red with its words.",
+      "html": "<ol class=\"ds-pipe\"><li><div class=\"ds-pipe-pile\"><span class=\"ds-pipe-km\">116.7 <small>km</small></span><div class=\"ds-pipe-bar\" style=\"height:67%\"></div></div><div class=\"ds-pipe-rail\"><span class=\"ds-pipe-chip\">Laying</span></div></li><li><div class=\"ds-pipe-pile\"><span class=\"ds-pipe-km\">60.5 <small>km</small></span><div class=\"ds-pipe-bar\" style=\"height:35%\"></div></div><div class=\"ds-pipe-rail\"><span class=\"ds-pipe-chip ds-pipe-chip-slow\">Inner sheath</span></div><p class=\"ds-pipe-slow\">Slowest step</p></li><li><div class=\"ds-pipe-pile\"><span class=\"ds-pipe-km\">174.5 <small>km</small></span><div class=\"ds-pipe-bar ds-pipe-bar-on\" style=\"height:100%\"></div></div><div class=\"ds-pipe-rail\"><span class=\"ds-pipe-chip ds-pipe-chip-on\">Armouring 5</span></div></li></ol>",
+      "css": ".ds-pipe { display: grid; grid-template-columns: repeat(3, 1fr); width: 520px; margin: 0; padding: 0; list-style: none; color: var(--ink); font-family: Inter, system-ui, sans-serif; } .ds-pipe li { padding: 8px; } .ds-pipe-pile { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 160px; } .ds-pipe-km { font-size: 1rem; line-height: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; } .ds-pipe-km small { font-size: 0.75rem; font-weight: 400; color: var(--ink-2); } .ds-pipe-bar { width: 40px; max-height: 120px; background: color-mix(in srgb, var(--primary) 30%, transparent); } .ds-pipe-bar-on { background: var(--primary); } .ds-pipe-rail { position: relative; display: flex; justify-content: center; margin-top: 12px; } .ds-pipe-rail::before { content: \"\"; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line); } .ds-pipe-chip { position: relative; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; } .ds-pipe-chip-on { border-color: var(--primary); background: var(--primary); color: #fff; } .ds-pipe-chip-slow { border-color: var(--critical); background: var(--critical); color: #fff; } .ds-pipe-slow { margin: 6px 0 0; text-align: center; font-size: 0.75rem; line-height: 1rem; font-weight: 500; letter-spacing: 0.01em; color: var(--critical); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Morning Meeting Board",
+    "overview": "This is a board a plant team reads together at 07:30, on a projector or TV, and again alone at a desk. It answers four questions in a fixed order (is there cable, did the men produce, are the bobbins ready, how much work is left) at a size that can be read from across the room, before any table or control asks for attention. A reader can stop at any point and still hold the most important facts.\n\nThe look is an Apple-style light interface: a pale grey ground, flat white panels with a hairline edge, near-black text, and very little else. Blocks are told apart by their title, a small line icon and their position, not by colour. Colour is spent only where it means something: blue for action and selection, indigo for a machine with no work and, in a lighter step, for the second series in a chart, and red, amber and green for status, always next to a word.\n\nDecisions the user made, recorded here as fixed: light mode only for now; one typeface, Inter, on every device; one primary colour and one secondary colour; rounded corners used sparingly; the page uses the full width of the screen. This replaces the older \"a different colour for each block\" look.",
+    "keyCharacteristics": [
+      "Four headline figures first, in the order of the four questions.",
+      "Flat white panels on a grey ground; one soft shadow, used only for things that float.",
+      "One blue, one indigo; red, amber and green only for status, always with a word.",
+      "One typeface, seven fixed sizes, figures that line up in columns.",
+      "Square tables and bars; small radius on controls, slightly larger on panels.",
+      "Every block shows its own \"Data as of\" time."
+    ],
+    "rules": [
+      { "name": "The Two Colours Rule", "body": "Blue and indigo are the only colours that are not status. A block never gets a colour of its own.", "section": "colors" },
+      { "name": "The Status Has A Word Rule", "body": "Red, amber and green never appear alone. A red chip says \"Slowest step\"; a red time says \"Out of date:\"; an amber badge says \"Not approved\". In charts, every coloured part is named in a legend.", "section": "colors" },
+      { "name": "The Normal Is Grey Rule", "body": "A normal state is written in plain grey text (\"Approved\", \"In plan\"). Only the exception gets a coloured badge, so the eye lands on what needs action.", "section": "colors" },
+      { "name": "The Meaning Not Rank Rule", "body": "A chart part takes its colour from what the state means (usable in blue and indigo, problem states in status colours, inactive in grey), never from its position in the list.", "section": "colors" },
+      { "name": "The One Family Rule", "body": "Inter only. No second typeface, no monospace for numbers, no decorative face.", "section": "typography" },
+      { "name": "The Lined-Up Figures Rule", "body": "Every number that can sit above or below another number uses tabular figures (the `num` class): table columns, tiles, times, row counts, chart labels.", "section": "typography" },
+      { "name": "The Sentence Case Rule", "body": "Titles, labels, column headers and buttons are written in sentence case at normal letter spacing. There are no all-caps labels above headings. Capitals appear only where the data itself is capitals (the account initial, shift codes).", "section": "typography" },
+      { "name": "The Stop Anywhere Rule", "body": "Order on screen follows the order of the four questions. Nothing may be placed above the headline row except the top bar and the machine name.", "section": "layout" },
+      { "name": "The Flat Panel Rule", "body": "If it stays on the page, it has a hairline and no shadow. If it floats and goes away, it has the one shadow.", "section": "elevation" },
+      { "name": "The Square Data Rule", "body": "Anything that draws data (a row, a bar, a pile, a swatch) has square corners. Only things a person presses or reads as a container are rounded.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do keep the order: top bar, machine name, four headline answers, pipeline strip, panels.",
+      "Do use Action Blue for action, selection and the first data series, and Night Indigo for the second series and the no-work state.",
+      "Do put a word beside every red, amber or green mark, and name every chart colour in a legend.",
+      "Do show a normal state as plain grey text and keep badges for exceptions.",
+      "Do use the `num` class on every figure that sits in a column or a tile.",
+      "Do use 6px on controls and badges, 10px on panels and menus, and square corners on tables, bars and swatches.",
+      "Do give every panel its own \"Data as of\" time, and say \"Out of date:\" in words when it is stale.",
+      "Do build every table with the shared data table: server paging, sorting, search and filters, 700 ms search delay, filter choices from the server.",
+      "Do let a panel arrange itself by its own width, so it works one, two or three across.",
+      "Do honour reduced motion and reduced transparency, and keep the 3px blue focus outline visible."
+    ],
+    "donts": [
+      "Don't give a block its own colour. Blocks are told apart by title, icon and position.",
+      "Don't add a dark theme for now; the product is light mode only.",
+      "Don't add a second typeface or a monospace face for numbers.",
+      "Don't use red, amber or green for decoration or for a data series that is not a status.",
+      "Don't put a shadow on a panel, a table or a button. The one shadow belongs to menus and tooltips.",
+      "Don't round tables, bars, piles or legend swatches, and do not use pill shapes.",
+      "Don't wrap the page in a centred maximum-width column.",
+      "Don't add filters to number or time columns; they sort only.",
+      "Don't load a full list into the browser to sort, search or filter it there.",
+      "Don't write that a machine is \"free\" or \"idle\"; its men \"can be utilized for some other purposes\".",
+      "Don't draw a Gantt chart."
+    ]
+  }
+}

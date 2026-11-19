@@ -28,7 +28,8 @@ const colours = [
   ["line-2", "Row dividers"],
   ["primary", "Action, link, selection, main series"],
   ["primary-tint", "Selected ground"],
-  ["secondary", "Second series, machine with no work"],
+  ["secondary", "Machine with no work"],
+  ["secondary-soft", "Second chart series"],
   ["secondary-tint", "Second series ground"],
   ["critical", "Status: problem"],
   ["warning", "Status: attention"],
@@ -60,7 +61,10 @@ export default async function DesignSystemPage() {
 
   return (
     <main className="mx-auto w-full max-w-[1200px] space-y-6 px-4 py-10 sm:px-6">
-      <h1 className="text-page">Design system</h1>
+      <div>
+        <h1 className="text-page">Design system</h1>
+        <p className="mt-1 text-label text-ink-2">Every order, customer and figure on this page is sample data, made up to show the components.</p>
+      </div>
 
       <Group title="Colour">
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
@@ -171,7 +175,7 @@ export default async function DesignSystemPage() {
             unit="km"
             legend={[
               { name: "Day", color: "--primary" },
-              { name: "Night", color: "--secondary" },
+              { name: "Night", color: "--secondary-soft" },
             ]}
             bars={["14 Nov", "15 Nov", "16 Nov", "17 Nov", "18 Nov"].map((d, i) => ({
               key: d,
@@ -179,7 +183,7 @@ export default async function DesignSystemPage() {
               tip: `${d}: ${2 + i * 0.4} km`,
               segments: [
                 { name: "Day", value: 1.2 + i * 0.3, color: "--primary" },
-                { name: "Night", value: 0.8 + i * 0.1, color: "--secondary" },
+                { name: "Night", value: 0.8 + i * 0.1, color: "--secondary-soft" },
               ],
             }))}
           />
@@ -187,7 +191,7 @@ export default async function DesignSystemPage() {
             label="Bobbin pool"
             parts={[
               { name: "Loaded", value: 24, color: "--primary" },
-              { name: "Filled", value: 12, color: "--secondary" },
+              { name: "Filled", value: 12, color: "--secondary-soft" },
               { name: "Empty", value: 30, color: "--line" },
               { name: "Badly wound", value: 3, color: "--warning" },
               { name: "Broken", value: 1, color: "--critical" },

@@ -19,13 +19,14 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
     { stage: "ARMOURING", name: machineLabel(machineCode), href: "#cable" },
     { stage: "OUTER_SHEATH", name: "Outer sheath", href: "#wait-outer" },
   ];
+  const slow = stageOut.steps.find((s) => s.stage === stageOut.slowest);
   const scaleMax = Math.max(0, ...waiting.steps.filter((s) => s.unit === "km").map((s) => s.km)) || 1;
 
   return (
     <Panel
       id="line"
       title="Cable waiting along the line"
-      subtitle="How much cable sits in front of each step. The tallest pile shows where work is stuck."
+      subtitle="Each bar is the cable waiting in front of that step. Red marks the step with the lowest output a working day."
       asOf={waiting.asOf}
     >
       {!waiting.hasData && <p className="mb-4 text-label text-ink-2">Order lines from the SFG dashboard have not been loaded, so every pile shows zero.</p>}
@@ -36,12 +37,12 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
           const slowest = stageOut.slowest === s.stage;
           const h = w && w.unit === "km" ? (w.km / scaleMax) * 100 : 0;
           const body = (
-            <>
+            <div className="flex flex-col-reverse sm:flex-col">
               {/* pile: vertical on wide screens, horizontal on phones */}
               <div className="flex items-center gap-3 sm:h-40 sm:flex-col sm:justify-end sm:gap-1.5">
                 {w ? (
                   <>
-                    <span className="num order-2 w-24 shrink-0 text-right text-body font-semibold sm:order-none sm:w-auto sm:text-center">
+                    <span className="num order-2 w-28 shrink-0 whitespace-nowrap text-right text-body font-semibold sm:order-none sm:w-auto sm:text-center">
                       {km(w.km)} <span className="text-caption font-normal text-ink-2">{w.unit}</span>
                     </span>
                     {w.unit === "km" ? (
@@ -50,7 +51,7 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
                         <div data-pile className={isMachine ? "bg-primary" : "bg-primary/30"} style={{ ["--h" as string]: `${h}%` }} />
                       </div>
                     ) : (
-                      <div className="order-1 flex-1 text-caption font-normal text-ink-2 sm:order-none sm:flex-none">not to scale</div>
+                      <div className="order-1 flex-1 text-caption font-normal text-ink-2 sm:order-none sm:flex-none">different unit, no bar</div>
                     )}
                   </>
                 ) : (
@@ -58,7 +59,7 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
                 )}
               </div>
               {/* the step itself, on a rail */}
-              <div className="relative mt-2 flex items-center sm:mt-3 sm:justify-center">
+              <div className="relative mb-2 flex items-center sm:mb-0 sm:mt-3 sm:justify-center">
                 <span aria-hidden className={`absolute inset-x-0 top-1/2 hidden h-px bg-line sm:block ${i === 0 ? "left-1/2" : ""} ${i === steps.length - 1 ? "right-1/2" : ""}`} />
                 <span
                   className={`relative rounded-control px-2.5 py-1 text-label font-medium ${
@@ -69,11 +70,15 @@ export async function Pipeline({ machineCode }: { machineCode: string }) {
                   {slowest && <span className="sr-only"> (slowest step)</span>}
                 </span>
               </div>
-              {slowest && <p className="mt-1.5 text-caption text-critical sm:text-center">Slowest step</p>}
-            </>
+              {slowest && (
+                <p className="num mt-1.5 text-caption text-critical sm:text-center">
+                  Slowest step{slow?.avg != null && `, ${km(slow.avg)} ${slow.unit} a working day`}
+                </p>
+              )}
+            </div>
           );
           return (
-            <li key={s.stage} className="min-w-0 px-1 py-2 sm:px-2">
+            <li key={s.stage} className="min-w-0 px-1 py-3 sm:px-2 sm:py-2">
               {s.href ? (
                 <a href={s.href} className="block rounded-control" aria-label={`${s.name}: ${w ? `${km(w.km)} ${w.unit} waiting` : ""}`}>
                   {body}

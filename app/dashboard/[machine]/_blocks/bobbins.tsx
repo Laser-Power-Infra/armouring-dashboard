@@ -9,7 +9,7 @@ import { ServerTable } from "@/components/dash/server-table";
 // problem states in the status colours. Every part is also named in the legend.
 const STATE_COLORS: [RegExp, string][] = [
   [/load/i, "--primary"],
-  [/fill/i, "--secondary"],
+  [/fill/i, "--secondary-soft"],
   [/empty/i, "--line"],
   [/bad|wound/i, "--warning"],
   [/work/i, "--ink-3"],
