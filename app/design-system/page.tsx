@@ -9,6 +9,11 @@ import { Empty, ErrorNote, Skeleton } from "@/components/ui/feedback";
 import { Popover } from "@/components/ui/popover";
 import { Bars, SplitBar } from "@/components/dash/charts";
 import { Glyph } from "@/components/dash/glyph";
+import { DataTable } from "@/components/ui/data-table";
+import { getTableEnv } from "@/lib/dashboard/data";
+import { clientColumns, TABLES } from "@/lib/tables/defs";
+import { defaultParams } from "@/lib/tables/params";
+import { fetchRows } from "@/lib/tables/query";
 
 export const metadata = { title: "Design system" };
 export const instant = false;
@@ -45,6 +50,11 @@ export default async function DesignSystemPage() {
   await connection();
   // Open while developing; in production only an admin may see it (proxy.ts guards /admin only).
   if (process.env.NODE_ENV === "production" && (await auth())?.user?.role !== "admin") notFound();
+
+  // A live table: the same server query renders page 1 and answers every later request.
+  const def = TABLES["work-left"];
+  const machine = "ARM5";
+  const initial = await fetchRows(def, defaultParams(def, machine), await getTableEnv()).catch(() => null);
 
   const asOf = { at: new Date("2026-11-18T02:00:00Z"), stale: false, staleHours: 12 };
 
@@ -185,6 +195,14 @@ export default async function DesignSystemPage() {
           />
         </div>
       </Panel>
+
+      <Group title="Data table">
+        {initial ? (
+          <DataTable table={def.name} machine={machine} title={def.title} columns={clientColumns(def)} initial={initial} defaultSort={def.defaultSort} defaultSize={def.defaultSize} version="design-system" />
+        ) : (
+          <ErrorNote message="No database: the live table is not shown." />
+        )}
+      </Group>
 
       <Group title="Loading, empty, error">
         <div className="grid items-start gap-6 lg:grid-cols-3">
