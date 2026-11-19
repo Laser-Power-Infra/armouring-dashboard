@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-// Plain HTML charts following the dataviz rules: thin bars, rounded data ends,
+// Plain HTML charts following the dataviz rules: thin bars, square data ends,
 // 2px surface gap between segments, recessive grid, hover/focus tooltip, table view.
 
 export type Segment = { name: string; value: number; color: string };
@@ -31,10 +31,10 @@ export function Bars({
   return (
     <figure className="m-0">
       {legend && legend.length > 1 && (
-        <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-2" aria-label="Legend">
+        <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-caption text-ink-2" aria-label="Legend">
           {legend.map((l) => (
             <li key={l.name} className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-[3px]" style={{ background: `var(${l.color})` }} />
+              <span className="size-2.5" style={{ background: `var(${l.color})` }} />
               {l.name}
             </li>
           ))}
@@ -43,7 +43,7 @@ export function Bars({
       <div className="relative" style={{ height }} role="img" aria-label={`${label}. Use Show as table for values.`}>
         {/* top gridline with its value, and the baseline */}
         <div className="absolute inset-x-0 top-0 border-t border-dashed border-line" />
-        <span className="num absolute -top-2.5 right-0 bg-surface pl-1 text-[11px] text-ink-3">
+        <span className="num absolute -top-2.5 right-0 bg-surface pl-1 text-caption font-normal text-ink-3">
           {fmt(top)} {unit}
         </span>
         <div className="absolute inset-x-0 bottom-0 border-t border-line" />
@@ -56,22 +56,21 @@ export function Bars({
                 key={b.key}
                 tabIndex={0}
                 aria-label={`${b.axis}: ${fmt(t)} ${unit}`}
-                className="group relative flex h-full min-w-0 flex-1 cursor-default flex-col-reverse items-stretch gap-[2px] outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-accent"
+                className="group relative flex h-full min-w-0 flex-1 cursor-default flex-col-reverse items-stretch gap-[2px]"
               >
-                {b.segments.map((s, si) =>
+                {b.segments.map((s) =>
                   s.value > 0 ? (
                     <div
                       key={s.name}
-                      className={si === lastNonZero(b.segments) ? "rounded-t-[4px]" : ""}
                       style={{ height: `${(s.value / top) * 100}%`, background: `var(${barColorOverride ?? s.color})` }}
                     />
                   ) : null,
                 )}
                 {/* hover target is the whole column, bigger than the mark */}
-                <div className="absolute inset-0 rounded group-hover:bg-ink/[0.04]" />
+                <div className="absolute inset-0 group-hover:bg-ink/[0.04]" />
                 <div
                   role="tooltip"
-                  className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max max-w-[220px] rounded-xl bg-ink px-3 py-2 text-[12px] leading-snug text-surface shadow-lg group-hover:block group-focus-visible:block ${align}`}
+                  className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden w-max max-w-[220px] rounded-control bg-ink px-3 py-2 text-caption font-normal text-surface shadow-[0_8px_28px_rgb(0_0_0/0.14)] group-hover:block group-focus-visible:block ${align}`}
                 >
                   {b.tip}
                 </div>
@@ -82,7 +81,7 @@ export function Bars({
       </div>
       <div className="mt-1.5 flex gap-[6%] px-[2%]">
         {bars.map((b, i) => (
-          <div key={b.key} className="num min-w-0 flex-1 truncate text-center text-[11px] text-ink-3">
+          <div key={b.key} className="num min-w-0 flex-1 truncate text-center text-caption font-normal text-ink-3">
             {showAxis(i) ? b.axis : ""}
           </div>
         ))}
@@ -90,7 +89,7 @@ export function Bars({
       {bars.some((b) => b.sub) && (
         <div className="mt-1 flex gap-[6%] px-[2%]">
           {bars.map((b) => (
-            <div key={b.key} className="num min-w-0 flex-1 truncate text-center text-[11px] text-ink-2">
+            <div key={b.key} className="num min-w-0 flex-1 truncate text-center text-caption font-normal text-ink-2">
               {b.sub}
             </div>
           ))}
@@ -104,8 +103,8 @@ export function Bars({
 function TableView({ bars, unit }: { bars: BarDatum[]; unit: string }) {
   const names = bars[0]?.segments.map((s) => s.name) ?? [];
   return (
-    <details className="mt-3 text-[13px]">
-      <summary className="inline-flex items-center gap-1 text-accent">
+    <details className="mt-3 text-label">
+      <summary className="inline-flex items-center gap-1 text-primary">
         <Chevron /> Show as table
       </summary>
       <div className="mt-2 overflow-x-auto">
@@ -143,7 +142,7 @@ export function SplitBar({ parts, label }: { parts: { name: string; value: numbe
   const sum = parts.reduce((s, p) => s + Math.max(0, p.value), 0);
   return (
     <figure className="m-0">
-      <div className="flex h-3 gap-[2px] overflow-hidden rounded-full bg-surface-2" role="img" aria-label={label}>
+      <div className="flex h-3 gap-[2px] overflow-hidden bg-line-2" role="img" aria-label={label}>
         {sum > 0 &&
           parts
             .filter((p) => p.value > 0)
@@ -151,13 +150,13 @@ export function SplitBar({ parts, label }: { parts: { name: string; value: numbe
               <div key={p.name} title={`${p.name}: ${fmt(p.value)}`} style={{ width: `${(p.value / sum) * 100}%`, background: `var(${p.color})` }} />
             ))}
       </div>
-      <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px] sm:grid-cols-3">
+      <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-label sm:grid-cols-3">
         {parts.map((p) => (
           <li key={p.name} className="flex items-center gap-2">
-            <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: `var(${p.color})` }} />
+            <span className="size-2.5 shrink-0" style={{ background: `var(${p.color})` }} />
             <span className="truncate text-ink-2">{p.name}</span>
             <span className="num ml-auto font-medium">{fmt(p.value)}</span>
-            {p.note && <span className="text-[12px] text-ink-3">{p.note}</span>}
+            {p.note && <span className="text-caption font-normal text-ink-3">{p.note}</span>}
           </li>
         ))}
       </ul>
@@ -174,11 +173,6 @@ export function Chevron() {
 }
 
 const total = (b: BarDatum) => b.segments.reduce((s, x) => s + x.value, 0);
-
-function lastNonZero(segs: Segment[]) {
-  for (let i = segs.length - 1; i >= 0; i--) if (segs[i].value > 0) return i;
-  return -1;
-}
 
 /** Round the axis top up to 1, 2, 2.5 or 5 × 10^n so the gridline label is a clean number. */
 function niceMax(v: number) {
