@@ -5,8 +5,11 @@ import { sizeKey, type Day, type DrumAssemblyRow, type DrumNeedRow, type DrumSto
 export const DRUM_DAYS = 15;
 const UNKNOWN = "Size not known";
 
-/** The plant has not given a drum size for the order ("SIZE TO CONFIRM" in the sheet). */
-export const sizeLabel = (size: string) => (/to confirm/i.test(size) || !size.trim() ? { text: UNKNOWN, known: false } : { text: size, known: true });
+/**
+ * The plant has not given a drum size for the order: "SIZE TO CONFIRM" in the sheet, or any text without
+ * dimensions in it ("TBC", "-"). A real size reads like 84×35×38×3.
+ */
+export const sizeLabel = (size: string) => (/to confirm/i.test(size) || !/\d\s*[x×]\s*\d/i.test(size) ? { text: UNKNOWN, known: false } : { text: size, known: true });
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 /** First number of a drum size: its flange diameter in inches. */
@@ -24,6 +27,8 @@ function flangeAdvice(size: string, stock: Stock) {
   const s = stock.get(sizeKey(size));
   const n = inches(size);
   if (!known) return { from: UNKNOWN, problem: "Drum size not given for the order", todo: "Plant to give the drum size for each order" };
+  // No figure in the stock sheet for this size: say so. Never report it as "none".
+  if (s?.flangesKgp == null) return { from: "Flange stock not known", problem: "Flange stock at Kharagpur is not known", todo: "Plant to give the flange stock for this size" };
   if (n === "84") return { from: "No flanges – to be bought", problem: "No 84″ flanges at Kharagpur", todo: "Buy 84″ flanges, or decide another drum size" };
   if (n === "70") return { from: "No flanges – buy 2, or use a complete 70″ drum", problem: "No 70″ flanges at Kharagpur", todo: "Buy 2 flanges, or use a complete 70″ drum from the yard" };
   if (n === "36") {
@@ -46,9 +51,10 @@ export function heldUp(rows: DrumAssemblyRow[], stock: DrumStockRow[]): HeldRow[
     .sort((a, b) => a.assembleBy.localeCompare(b.assembleBy) || a.rowNo - b.rowNo)
     .map((r) => {
       const key = sizeKey(r.drumSize);
-      const have = left.get(key) ?? byKey.get(key)?.flangesKgp ?? 0;
-      const held = !sizeLabel(r.drumSize).known || have < r.flangesNeeded;
-      left.set(key, Math.max(0, have - r.flangesNeeded));
+      const have = left.get(key) ?? byKey.get(key)?.flangesKgp ?? null;
+      // Held up too when the flange stock of the size is not known.
+      const held = !sizeLabel(r.drumSize).known || have === null || have < r.flangesNeeded;
+      if (have !== null) left.set(key, Math.max(0, have - r.flangesNeeded));
       return { ...r, held, flangesFrom: held ? flangeAdvice(r.drumSize, byKey).from : "Kharagpur stock" };
     });
 }
@@ -124,7 +130,7 @@ export function drumRequirementCard(need: DrumNeedRow[], stock: DrumStockRow[], 
     const label = sizeLabel(of[0].drumSize);
     const toMake = tot(of, make);
     const flangesKgp = label.known ? (byKey.get(key)?.flangesKgp ?? null) : null;
-    return { size: label.text, known: label.known, raw: of[0].drumSize, needed: tot(of, needed), inStock: tot(of, (r) => r.fromStock), toMake, flangesNeeded: toMake * 2, flangesKgp, flangesShort: flangesKgp !== null && flangesKgp < toMake * 2 };
+    return { size: label.text, known: label.known, raw: of[0].drumSize, needed: tot(of, needed), inStock: tot(of, (r) => r.fromStock), toMake, flangesNeeded: toMake * 2, flangesKgp, flangesShort: label.known && toMake > 0 && (flangesKgp === null || flangesKgp < toMake * 2) };
   });
 
   const before = `needed before ${dMon(d0)}`;
@@ -132,11 +138,11 @@ export function drumRequirementCard(need: DrumNeedRow[], stock: DrumStockRow[], 
 
   // More flanges needed than Kharagpur has.
   const flangeRows = bySize
-    .filter((s) => s.known && s.toMake > 0 && (s.flangesKgp ?? 0) < s.flangesNeeded)
+    .filter((s) => s.flangesShort)
     .map((s) => ({
       size: s.size,
       known: true,
-      problem: `${plural(s.toMake, "drum", "drums")} to be made ${s.toMake === 1 ? "needs" : "need"} ${plural(s.flangesNeeded, "flange", "flanges")}. Kharagpur has only ${s.flangesKgp ?? 0}`,
+      problem: `${plural(s.toMake, "drum", "drums")} to be made ${s.toMake === 1 ? "needs" : "need"} ${plural(s.flangesNeeded, "flange", "flanges")}. ${s.flangesKgp === null ? "Flange stock at Kharagpur is not known" : `Kharagpur has only ${s.flangesKgp}`}`,
       todo: flangeAdvice(s.raw, byKey).todo,
     }));
   // Late and not in stock: the drum team makes these first.

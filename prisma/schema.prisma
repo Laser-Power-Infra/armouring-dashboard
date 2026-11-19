@@ -253,7 +253,7 @@ model MachineDaily {
 // Every issue is kept. One data table per card; each row points at its issue.
 model CardIssue {
   id          Int       @id @default(autoincrement())
-  version     String    @unique // as written in the sheet's Version column
+  version     String // as written in the sheet's Version column; it has no year, so it is unique only with d0
   issueDate   DateTime  @map("issue_date") @db.Date
   rev         Int
   d0          DateTime  @db.Date // first day of the card
@@ -266,6 +266,7 @@ model CardIssue {
   drumAssembly CardDrumAssembly[]
   drumStock    CardDrumStock[]
 
+  @@unique([version, d0])
   @@unique([issueDate, rev])
   @@map("card_issues")
 }

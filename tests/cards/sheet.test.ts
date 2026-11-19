@@ -27,12 +27,18 @@ describe("card sheet parsing", () => {
   it("matches a drum size however it is typed", () => {
     expect(sizeKey("84 X 35 X 38 X 3 + EXTRA SEGMENT")).toBe(sizeKey("84×35×38×3 + extra segment"));
     expect(sizeKey("48 X 20 X 28 X 2.25 - RDSO")).toBe(sizeKey("48×20×28×2.25 RDSO"));
+    // A note in brackets is not part of the size.
+    expect(sizeKey("60×30×32×3 (250 m packing)")).toBe(sizeKey("60 X 30 X 32 X 3"));
+    expect(sizeKey("43 X 15 X 28 X 2.25")).not.toBe(sizeKey("43 X 15 X 23 X 2.25"));
   });
 
   it("reads the version text", () => {
     expect(parseVersion("17-Nov R2 plan", "2026-11-17")).toEqual({ issueDate: "2026-11-17", rev: 2 });
     expect(parseVersion("VERSION 20-Nov-26 / Rev 6", "2026-11-20")).toEqual({ issueDate: "2026-11-20", rev: 6 });
     expect(parseVersion("draft", "2026-11-20")).toEqual({ issueDate: "2026-11-20", rev: null });
+    // No year in the text: the issue date is the one nearest to day 0, also across a new year.
+    expect(parseVersion("2-Jan R1 plan", "2026-12-28").issueDate).toBe("2027-01-02");
+    expect(parseVersion("31-Dec R1", "2027-01-01").issueDate).toBe("2026-12-31");
   });
 
   it("reads every tab of the issued cards", () => {
@@ -58,6 +64,15 @@ describe("card sheet parsing", () => {
     expect(stock.find((s) => s.sizeKey === sizeKey("60×30×32×3 (250 m packing)"))).toMatchObject({ drums: 8, flangesKgp: 330, flangesPp: 186 });
     expect(stock.find((s) => s.sizeKey === sizeKey("70×35×38×3"))).toMatchObject({ drums: null, flangesKgp: 0 });
     expect(stock.find((s) => s.sizeKey === sizeKey("43 X 15 X 23 X 2.25"))).toMatchObject({ flangesKgp: null });
+  });
+
+  it("reads a stock figure typed as text, and keeps an unfilled one unknown", () => {
+    const tab = fixture("drum-stock").map((r) => [...r]);
+    const col = tab[0].findIndex((h) => String(h).startsWith("Flange stock KHARAGPUR"));
+    tab[1][col] = "1,127";
+    tab[2][col] = "";
+    const stock = parseDrumStock(tab);
+    expect([stock[0].flangesKgp, stock[1].flangesKgp]).toEqual([1127, null]);
   });
 
   it("gives the same rows when columns move and a new one is added", () => {

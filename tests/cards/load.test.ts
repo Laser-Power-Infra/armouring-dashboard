@@ -27,8 +27,23 @@ describe.skipIf(!url)("loading card issues", () => {
     await loadCards(db, fixtureTabs());
     expect(await db.cardIssue.count()).toBe(2);
     expect(await db.cardLabour.count()).toBe(564);
-    expect(await db.cardPlan.count({ where: { issueId: a.issueId } })).toBe(0); // the old copy of that issue is gone
+    expect(await db.cardPlan.count({ where: { issueId: a.issueId } })).toBe(271); // replaced, not doubled
     expect(await db.cardPlan.count({ where: { issueId: b.issueId } })).toBe(271);
+  }, 120_000);
+
+  it("keeps its id when loaded again, so a link to that issue still opens", async () => {
+    const a = await loadCards(db, fixtureTabs());
+    expect((await loadCards(db, fixtureTabs())).issueId).toBe(a.issueId);
+    expect(await db.cardPlan.count({ where: { issueId: a.issueId } })).toBe(271);
+  }, 120_000);
+
+  it("keeps last year's issue when the same version text comes back a year later", async () => {
+    const a = await loadCards(db, fixtureTabs()); // "17-Nov R2 plan", day 0 = 17-Nov-26
+    const nextYear = JSON.parse(JSON.stringify(fixtureTabs()).replaceAll("-Nov-26", "-Nov-27").replaceAll("-Dec-26", "-Dec-27"));
+    const b = await loadCards(db, nextYear);
+    expect(b).toMatchObject({ version: "17-Nov R2 plan", issueDate: "2027-11-17", rev: 2 });
+    expect(b.issueId).not.toBe(a.issueId);
+    expect(await db.cardIssue.count()).toBe(2);
   }, 120_000);
 
   it("numbers an issue itself when the version text has no revision", async () => {

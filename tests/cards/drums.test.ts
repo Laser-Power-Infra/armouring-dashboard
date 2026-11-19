@@ -44,14 +44,40 @@ describe("drum assembly card", () => {
 
   it("holds up a size it has no stock figure for, instead of dropping it", () => {
     const row: DrumAssemblyRow = { version: "", rowNo: 0, assembleBy: "2026-11-20", was: null, drumSize: "99×9×9×9", drums: 2, flangesNeeded: 4, flangesFrom: "", prodOrder: "P7-1", partyCable: "A · B", lot: "PL-1", usedOn: "2026-11-24" };
-    expect(heldUp([row], stock)[0]).toMatchObject({ held: true, flangesFrom: "Not enough at Kharagpur" });
+    expect(heldUp([row], stock)[0]).toMatchObject({ held: true, flangesFrom: "Flange stock not known" });
     expect(sizeLabel("SIZE TO CONFIRM")).toEqual({ text: "Size not known", known: false });
+    // Anything that is not a size (no dimensions in it) is a size the plant has not given.
+    expect(["TBC", "-", "NOT KNOWN", ""].map((x) => sizeLabel(x).known)).toEqual([false, false, false, false]);
+    expect(sizeLabel("99×9×9×9").known).toBe(true);
   });
 
   it("uses flanges up in date order: the first drums get them, later ones are held", () => {
     const row = (rowNo: number, assembleBy: string, drums: number): DrumAssemblyRow => ({ version: "", rowNo, assembleBy, was: null, drumSize: "76×40×36×3", drums, flangesNeeded: drums * 2, flangesFrom: "", prodOrder: "P7-1", partyCable: "A · B", lot: "PL-1", usedOn: assembleBy });
     // 43 flanges at Kharagpur for this size: 20 drums take 40, the next 2 need 4 and only 3 are left.
     expect(heldUp([row(1, "2026-11-21", 2), row(0, "2026-11-20", 20)], stock).map((r) => r.held)).toEqual([false, true]);
+  });
+});
+
+describe("flange stock the plant has not filled", () => {
+  // 54 inch: the stock cell is empty, so nobody knows how many flanges Kharagpur has.
+  const unknown = stock.map((x) => (x.drumSize.startsWith("54") ? { ...x, flangesKgp: null } : x));
+
+  it("holds the drums up and says the stock is not known, never that there are none", () => {
+    const a = drumAssemblyCard(parseDrumAssembly(fixture("drum-assembly")), unknown, "2026-11-17");
+    expect(a.rows.find((r) => r.size.text === "54×24×32×3")).toMatchObject({ held: true, flangesFrom: "Flange stock not known" });
+    expect(a.cannot.find((c) => c.size === "54×24×32×3")).toEqual({ size: "54×24×32×3", known: true, drums: 8, problem: "Flange stock at Kharagpur is not known", todo: "Plant to give the flange stock for this size" });
+  });
+
+  it("asks for the stock on the requirement card and marks the size", () => {
+    const r = drumRequirementCard(parseDrumNeed(fixture("fg-drum-need")), unknown, "2026-11-17");
+    expect(r.needsAction.find((n) => n.size === "54×24×32×3")).toMatchObject({ problem: "8 drums to be made need 16 flanges. Flange stock at Kharagpur is not known", todo: "Plant to give the flange stock for this size" });
+    expect(r.bySize.find((x) => x.size === "54×24×32×3")).toMatchObject({ flangesKgp: null, flangesShort: true });
+  });
+
+  it("finds the stock when the card writes the size with a note and the stock sheet without", () => {
+    const plain = stock.map((x) => (x.drumSize.startsWith("60") ? { ...x, drumSize: "60 X 30 X 32 X 3", sizeKey: "60x30x32x3" } : x));
+    const a = drumAssemblyCard(parseDrumAssembly(fixture("drum-assembly")), plain, "2026-11-17");
+    expect(a.rows.find((r) => r.size.text.startsWith("60"))).toMatchObject({ held: false, flangesFrom: "Kharagpur stock" });
   });
 });
 

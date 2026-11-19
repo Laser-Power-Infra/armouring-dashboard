@@ -88,16 +88,26 @@ export function parseDay(v: unknown): { day: Day; late: boolean; was: Day | null
   return { day, late: /late/i.test(tail), was: textDay(tail) };
 }
 
-/** One key for a drum size however it is typed: "84 X 35 X 38 X 3 + EXTRA SEGMENT" = "84×35×38×3 + extra segment". */
-export const sizeKey = (s: string) => s.toLowerCase().replace(/×/g, "x").replace(/[\s-]/g, "");
+/**
+ * One key for a drum size however it is typed: "84 X 35 X 38 X 3 + EXTRA SEGMENT" = "84×35×38×3 + extra segment".
+ * A note in brackets ("(250 m packing)") is not part of the size.
+ */
+export const sizeKey = (s: string) => s.toLowerCase().replace(/\(.*?\)/g, "").replace(/×/g, "x").replace(/[\s-]/g, "");
 
-/** Issue date and revision number from the version text. The year comes from day 0 when the text has none. */
+/**
+ * Issue date and revision number from the version text. When the text has no year, the issue date is the one
+ * nearest to day 0: a card for 28-Dec issued again on "2-Jan" belongs to the next year.
+ */
 export function parseVersion(text: string, d0: Day): { issueDate: Day; rev: number | null } {
   const d = /(\d{1,2})-([A-Za-z]{3})(?:-(\d{2,4}))?/.exec(text);
   const month = d ? MONTHS.indexOf(d[2].toLowerCase()) + 1 : 0;
-  const year = d?.[3] ? Number(d[3]) + (d[3].length === 2 ? 2000 : 0) : Number(d0.slice(0, 4));
-  const rev = /\bR(?:ev)?\s*(\d+)/i.exec(text);
-  return { issueDate: d && month ? iso(year, month, Number(d[1])) : d0, rev: rev ? Number(rev[1]) : null };
+  const found = /\bR(?:ev)?\s*(\d+)/i.exec(text);
+  const rev = found ? Number(found[1]) : null;
+  if (!d || !month) return { issueDate: d0, rev };
+  if (d[3]) return { issueDate: iso(Number(d[3]) + (d[3].length === 2 ? 2000 : 0), month, Number(d[1])), rev };
+  const y0 = Number(d0.slice(0, 4));
+  const gap = (day: Day) => Math.abs(Date.parse(day) - Date.parse(d0));
+  return { issueDate: [y0 - 1, y0, y0 + 1].map((y) => iso(y, month, Number(d[1]))).sort((a, b) => gap(a) - gap(b))[0], rev };
 }
 
 // Headings carry notes in brackets that change ("Current stock (fill)"); the words before the bracket are the name.
@@ -112,7 +122,12 @@ const num = (v: unknown, what: string) => {
   if (v === null || v === "" || !Number.isFinite(n)) throw new Error(`${what}: not a number: "${str(v)}"`);
   return n;
 };
-const numOrNull = (v: unknown) => (typeof v === "number" ? v : null);
+/** A figure the plant filled in, also when typed as text ("1,127"). Anything else is not known. */
+const numOrNull = (v: unknown) => {
+  if (typeof v === "number") return v;
+  const s = str(v).replace(/,/g, "");
+  return /^\d+(\.\d+)?$/.test(s) ? Number(s) : null;
+};
 const list = (v: unknown) => str(v).split(",").map((s) => s.trim()).filter(Boolean);
 const known = (machine: string, tab: string) => {
   if (!(MACHINE_ORDER as readonly string[]).includes(machine)) throw new Error(`${tab}: unknown machine "${machine}"`);

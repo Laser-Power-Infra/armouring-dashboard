@@ -40,13 +40,24 @@ export async function loadCards(db: PrismaClient, tabs: CardTabs) {
 
   return db.$transaction(
     async (tx) => {
-      const old = await tx.cardIssue.findUnique({ where: { version } });
-      if (old) await tx.cardIssue.delete({ where: { id: old.id } }); // its rows go with it
+      // The same version text for the same day 0 is the same issue. (The text carries no year, so it comes back every year.)
+      const old = await tx.cardIssue.findUnique({ where: { version_d0: { version, d0: date(d0) } } });
       const last = await tx.cardIssue.aggregate({ where: { issueDate: date(parsed.issueDate) }, _max: { rev: true } });
       // The sheet's version text names the revision; when it does not, take the next number of that date.
       const rev = parsed.rev ?? old?.rev ?? (last._max.rev ?? 0) + 1;
-      const issue = await tx.cardIssue.create({ data: { version, issueDate: date(parsed.issueDate), rev, d0: date(d0) } });
+      const data = { version, issueDate: date(parsed.issueDate), rev, d0: date(d0), loadedAt: new Date() };
+      // An issue loaded again keeps its id, so links to it keep working; only its rows are replaced.
+      const issue = old ? await tx.cardIssue.update({ where: { id: old.id }, data }) : await tx.cardIssue.create({ data });
       const issueId = issue.id;
+      if (old) {
+        const where = { where: { issueId } };
+        await tx.cardPlan.deleteMany(where);
+        await tx.cardLabour.deleteMany(where);
+        await tx.cardSpareMen.deleteMany(where);
+        await tx.cardDrumNeed.deleteMany(where);
+        await tx.cardDrumAssembly.deleteMany(where);
+        await tx.cardDrumStock.deleteMany(where);
+      }
       // The version lives on the issue row, not on every data row.
       const drop = <T extends { version: string }>(r: T): Omit<T, "version"> => {
         const copy: Partial<T> = { ...r };
