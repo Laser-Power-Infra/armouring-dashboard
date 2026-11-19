@@ -1,0 +1,110 @@
+/* The KGP card look, approved 18-Nov-26 and fixed (build spec 2.2). Copied from templates/*.html and scoped to the card
+   pages, so the dashboard's own design system is untouched. Sizes are in pt because the cards are made for A4 paper. */
+
+@page card {
+  size: A4 landscape;
+  margin: 9mm 9mm 12mm;
+}
+
+/* Screen: each printed page is a white sheet as wide as A4 landscape inside its margins. */
+.kgp-stage {
+  overflow-x: auto;
+  padding: 16px;
+}
+.kgp-sheet {
+  width: 279mm;
+  margin: 0 auto 16px;
+  padding: 9mm;
+  box-sizing: content-box;
+  background: #fff;
+  border: 1px solid #d2d2d7;
+}
+
+.kgp-card {
+  page: card;
+  font-family: var(--font-roboto), Arial, sans-serif;
+  font-size: 9pt;
+  color: #1a1a1a;
+  line-height: 1.3;
+
+  * { box-sizing: border-box; }
+  b, th { font-weight: bold; }
+
+  .top { display: flex; gap: 14px; align-items: flex-start; border-bottom: 3px solid #1c3a6b; padding-bottom: 8px; margin-bottom: 8px; }
+  .left { flex: 1; }
+  .right { width: 345px; }
+
+  .grp { font-size: 8pt; font-weight: bold; color: #1c3a6b; text-transform: uppercase; letter-spacing: 0.6px; }
+  h1 { font-size: 20pt; font-weight: bold; margin: 0 0 4px; color: #1c3a6b; }
+  h2 { font-size: 16pt; font-weight: bold; margin: 0 0 6px; color: #1c3a6b; }
+  h3 { font-size: 10.5pt; font-weight: bold; color: #1c3a6b; margin: 10px 0 3px; }
+  .ver { display: inline-block; border: 1.5px solid #1c3a6b; color: #1c3a6b; padding: 1px 7px; font-weight: bold; font-size: 8pt; margin-bottom: 5px; }
+
+  table { border-collapse: collapse; }
+  table.facts td { padding: 2px 8px; vertical-align: top; border: 1px solid #9aa7bd; }
+  td.fl { font-weight: bold; color: #1c3a6b; white-space: nowrap; background: #dfe7f3; }
+
+  .caltitle { font-weight: bold; color: #1c3a6b; margin-bottom: 3px; }
+  table.cal { width: 100%; table-layout: fixed; }
+  table.cal th { font-size: 7pt; color: #1c3a6b; text-align: center; padding: 1px; }
+  table.cal td { height: 38px; border: 1px solid #9aa7bd; vertical-align: top; padding: 2px 4px; }
+  .cd { font-size: 7.6pt; font-weight: bold; }
+  .cq { font-size: 10.5pt; font-weight: bold; text-align: center; }
+  .cq0 { font-size: 6.6pt; text-align: center; color: #444; margin-top: 2px; line-height: 1.15; }
+  .cs { font-size: 6.6pt; text-align: center; white-space: nowrap; }
+  .of { font-size: 7.5pt; font-weight: normal; }
+  td.work { background: #2e7d32; color: #fff; }
+  td.shortd { background: #c2410c; color: #fff; }
+  td.idle { background: #fde047; }
+  td.out { background: #eceff3; color: #9aa3af; }
+  .chg { color: #fff; font-size: 9pt; margin-left: 3px; }
+
+  .leg { font-size: 7pt; margin-top: 4px; line-height: 1.6; }
+  .sw { display: inline-block; width: 10px; height: 10px; border: 1px solid #9aa7bd; vertical-align: -1px; margin-right: 3px; }
+  .sw.work { background: #2e7d32; }
+  .sw.shortd { background: #c2410c; }
+  .sw.idle { background: #fde047; }
+  .sw.out { background: #eceff3; }
+  .sw.dot { color: #fff; font-size: 7pt; line-height: 9px; text-align: center; }
+
+  table.t { width: 100%; table-layout: fixed; }
+  table.t th { background: #1c3a6b; color: #fff; text-align: left; vertical-align: top; padding: 4px 6px; font-size: 8pt; border: 1px solid #fff; }
+  th.g { text-align: center !important; font-size: 9pt !important; }
+  .ths { font-weight: normal; font-size: 6.8pt; opacity: 0.85; }
+  table.t td { padding: 3px 6px; vertical-align: top; border: 1px solid #9aa7bd; overflow-wrap: anywhere; }
+  tr { break-inside: avoid; }
+  thead { display: table-header-group; }
+  tr.dstart td { border-top: 1.5px solid #1c3a6b; }
+  tr.totr td { background: #dfe7f3; font-weight: bold; }
+
+  .dt { font-weight: bold; color: #1c3a6b; white-space: nowrap; }
+  .sm { font-size: 7.4pt; color: #555; }
+  .sec { color: #c2410c; font-weight: bold; }
+  div.sec { font-size: 7.4pt; }
+  .num { text-align: right !important; font-weight: bold; white-space: nowrap; }
+  td.c { text-align: center; white-space: nowrap; font-weight: bold; color: #1c3a6b; }
+  td.badc { background: #c2410c; color: #fff; }
+  td.nr { color: #666; background: #f3f5f8; text-align: center; }
+  .how { border: 1px solid #1c3a6b; background: #dfe7f3; padding: 4px 8px; margin: 6px 0; font-size: 8pt; }
+}
+
+/* The labour and drum cards print bigger figures in a taller calendar. */
+.kgp-card.labour {
+  .cq { font-size: 9.5pt; white-space: nowrap; margin-top: 2px; }
+}
+.kgp-card.drums {
+  .right { width: 360px; }
+  table.cal td { height: 44px; }
+  .cq { font-size: 11pt; line-height: 1.1; }
+  .dt, .num { white-space: normal; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+  .kgp-stage { overflow: visible; padding: 0; }
+  .kgp-sheet { width: auto; margin: 0; padding: 0; border: 0; }
+  .kgp-sheet + .kgp-sheet, .kgp-card h3.pb { break-before: page; }
+  .kgp-card h3.pb { margin-top: 0; }
+  .kgp-card td, .kgp-card th, .kgp-card .sw, .kgp-card .how { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

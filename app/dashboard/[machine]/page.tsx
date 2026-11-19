@@ -59,6 +59,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ mach
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <Link href="/cards/production" className={buttonClass("quiet")}>
+              Cards
+            </Link>
             <RefreshButton />
             {!session ? (
               <Link href="/login" className={buttonClass("secondary")}>

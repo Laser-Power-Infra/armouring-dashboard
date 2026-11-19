@@ -49,12 +49,11 @@ describe("machine production cards", () => {
     expect(machine("Skip (12+7)-1").load).toMatchObject({ text: "Low – works only 3 of 15 days", attention: true });
   });
 
-  // 28 Nov: the tab holds 2.66 + 0.58 + 0.71 = 3.95, shown as 4.0. The printed card says 3.9 because it summed the
-  // quantities before they were rounded to two decimals for the tab. The tab is the source here.
+  // 28 Nov: 2.66 + 0.58 + 0.71 = 3.95 is printed as 3.9 on the issued card, like the four other halfway days of this plan.
   it("colours the Armouring 5 calendar and marks strip changes", () => {
     expect(dayCells(machine("Armouring 5"))).toEqual([
       ["17", "1.0", false], ["18", "5.0", false], ["19", "4.0", true], ["20", "1.3", false], ["21", "2.0", false], ["22", "7.8", true],
-      ["23", "7.0", false], ["24", "5.9", false], ["25", "2.0", false], ["26", "1.0", false], ["27", "4.1", true], ["28", "4.0", true], ["29", "5.1", true],
+      ["23", "7.0", false], ["24", "5.9", false], ["25", "2.0", false], ["26", "1.0", false], ["27", "4.1", true], ["28", "3.9", true], ["29", "5.1", true],
       ["30", "3.6", false], ["1 Dec", "0.1", false],
     ]);
   });

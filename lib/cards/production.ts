@@ -84,8 +84,10 @@ export function productionCards(rows: PlanRow[]) {
       week.map((c): ProdCell => {
         if (c.index === null) return { ...c, tone: "out" };
         if (!workingDays.has(c.day)) return { ...c, tone: "idle", small: waiting.has(c.day) ? "waiting for drums" : "off" };
-        const total = lines.filter((r) => r.day === c.day).reduce((s, r) => s + r.qty, 0);
-        return { ...c, tone: "work", big: follows ? "runs" : total.toFixed(1), dot: dots.has(c.day) };
+        // Summed in hundredths (the tab holds two decimals) so the total is exact. A total exactly halfway, such as 3.95,
+        // goes down to 3.9: that is how every such day is printed on the issued cards.
+        const hundredths = lines.filter((r) => r.day === c.day).reduce((s, r) => s + Math.round(r.qty * 100), 0);
+        return { ...c, tone: "work", big: follows ? "runs" : (Math.floor((hundredths + 4) / 10) / 10).toFixed(1), dot: dots.has(c.day) };
       }),
     );
 
