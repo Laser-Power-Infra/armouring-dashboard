@@ -1,10 +1,10 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { regenerateCard1 } from "./actions";
+import { confirmIssue, regenerateCards } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/field";
+import { Input, Select } from "@/components/ui/field";
 
 /** Every stored issue, newest first. The newest needs no query string. */
 export function IssuePicker({ current, issues }: { current: number; issues: { id: number; name: string }[] }) {
@@ -23,9 +23,10 @@ export function IssuePicker({ current, issues }: { current: number; issues: { id
   );
 }
 
-/** Syncs the source sheets and stores a new revision of today's Card 1; the reason shows here when it cannot. */
+/** Syncs the source sheets and stores a new revision of today's four cards; the reason shows here when it cannot. */
 export function RegenerateButton() {
-  const [error, run, pending] = useActionState(regenerateCard1, null);
+  const [error, run, pending] = useActionState(regenerateCards, null);
+  const [note, setNote] = useState("");
   return (
     <>
       {error && !pending && (
@@ -33,10 +34,21 @@ export function RegenerateButton() {
           {error}
         </span>
       )}
-      <Button loading={pending} onClick={() => startTransition(run)}>
+      <Input className="w-44" aria-label="Note for the new version" placeholder="Note for this version" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
+      <Button loading={pending} onClick={() => startTransition(() => run(note))}>
         {pending ? "Regenerating…" : "Regenerate"}
       </Button>
     </>
+  );
+}
+
+/** Takes the review mark off the issue. */
+export function ConfirmButton({ id }: { id: number }) {
+  const [pending, start] = useTransition();
+  return (
+    <Button loading={pending} onClick={() => start(() => confirmIssue(id))}>
+      Confirm issue
+    </Button>
   );
 }
 

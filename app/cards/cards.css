@@ -19,6 +19,20 @@
   border: 1px solid #d2d2d7;
 }
 
+/* The diagonal mark of an issue not yet confirmed. A fixed box is repeated on every printed page. */
+.kgp-review {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transform: rotate(-24deg);
+  font: bold 52pt var(--font-roboto), Arial, sans-serif;
+  white-space: nowrap;
+  color: rgba(200, 70, 0, 0.12);
+}
+
 .kgp-card {
   page: card;
   font-family: var(--font-roboto), Arial, sans-serif;

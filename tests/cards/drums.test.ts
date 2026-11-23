@@ -44,7 +44,7 @@ describe("drum assembly card", () => {
 
   it("holds up a size it has no stock figure for, instead of dropping it", () => {
     const row: DrumAssemblyRow = { version: "", rowNo: 0, assembleBy: "2026-11-20", was: null, drumSize: "99×9×9×9", drums: 2, flangesNeeded: 4, flangesFrom: "", prodOrder: "P7-1", partyCable: "A · B", lot: "PL-1", usedOn: "2026-11-24" };
-    expect(heldUp([row], stock)[0]).toMatchObject({ held: true, flangesFrom: "Flange stock not known" });
+    expect(heldUp([row], stock)[0]).toMatchObject({ held: true, flangesFrom: "Not in the Drum Stock sheet" });
     expect(sizeLabel("SIZE TO CONFIRM")).toEqual({ text: "Size not known", known: false });
     // Anything that is not a size (no dimensions in it) is a size the plant has not given.
     expect(["TBC", "-", "NOT KNOWN", ""].map((x) => sizeLabel(x).known)).toEqual([false, false, false, false]);
@@ -62,16 +62,16 @@ describe("flange stock the plant has not filled", () => {
   // 54 inch: the stock cell is empty, so nobody knows how many flanges Kharagpur has.
   const unknown = stock.map((x) => (x.drumSize.startsWith("54") ? { ...x, flangesKgp: null } : x));
 
-  it("holds the drums up and says the stock is not known, never that there are none", () => {
+  it("holds the drums up and asks to confirm the flanges", () => {
     const a = drumAssemblyCard(parseDrumAssembly(fixture("drum-assembly")), unknown, "2026-11-17");
-    expect(a.rows.find((r) => r.size.text === "54×24×32×3")).toMatchObject({ held: true, flangesFrom: "Flange stock not known" });
-    expect(a.cannot.find((c) => c.size === "54×24×32×3")).toEqual({ size: "54×24×32×3", known: true, drums: 8, problem: "Flange stock at Kharagpur is not known", todo: "Plant to give the flange stock for this size" });
+    expect(a.rows.find((r) => r.size.text === "54×24×32×3")).toMatchObject({ held: true, flangesFrom: "To confirm" });
+    expect(a.cannot.find((c) => c.size === "54×24×32×3")).toEqual({ size: "54×24×32×3", known: true, drums: 8, problem: "54×24×32×3 flanges to confirm", todo: "Confirm flanges" });
   });
 
   it("asks for the stock on the requirement card and marks the size", () => {
     const r = drumRequirementCard(parseDrumNeed(fixture("fg-drum-need")), unknown, "2026-11-17");
-    expect(r.needsAction.find((n) => n.size === "54×24×32×3")).toMatchObject({ problem: "8 drums to be made need 16 flanges. Flange stock at Kharagpur is not known", todo: "Plant to give the flange stock for this size" });
-    expect(r.bySize.find((x) => x.size === "54×24×32×3")).toMatchObject({ flangesKgp: null, flangesShort: true });
+    expect(r.needsAction.find((n) => n.size === "54×24×32×3")).toMatchObject({ problem: "8 drums to be made need 16 flanges. Kharagpur has only 0", todo: "Confirm 54×24×32×3 flanges" });
+    expect(r.bySize.find((x) => x.size === "54×24×32×3")).toMatchObject({ flangesKgp: 0, flangesShort: true });
   });
 
   it("finds the stock when the card writes the size with a note and the stock sheet without", () => {
@@ -120,7 +120,7 @@ describe("drum requirement card", () => {
       ["76×40×36×3", "8 drums should already be ready (needed before 17 Nov) and are not in stock", "Drum team to assemble these first"],
       ["84×35×38×3 + extra segment", "55 drums to be made need 110 flanges. Kharagpur has only 0", "Buy 84″ flanges, or decide another drum size"],
       ["70×35×38×3", "1 drum to be made needs 2 flanges. Kharagpur has only 0", "Buy 2 flanges, or use a complete 70″ drum from the yard"],
-      ["36×14×23×2", "3 drums to be made need 6 flanges. Kharagpur has only 2", "Shift flanges from Poly Park (1,080 there)"],
+      ["36×14×23×2", "3 drums to be made need 6 flanges. Kharagpur has only 2", "Shift 36″ flanges from Poly Park (1,080 there)"],
       ["Size not known", "41 drums for 9 orders have no drum size: P726Y-00187 G.R. Infra, P726Y-00208 Laser, P726Y-00209 Laser, P726Y-00229 G.R. Infra, P726Y-00231 G.R. Infra, P726Y-00234 G.R. Infra, P726Y-00277 Laser, P726Y-00279 Laser, P726Y-00280 Laser", "Plant to give the drum size for each order"],
     ]);
   });

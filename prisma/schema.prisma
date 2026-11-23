@@ -260,6 +260,13 @@ model CardIssue {
   loadedAt    DateTime  @default(now()) @map("loaded_at") @db.Timestamptz
   s8PulledAt  String?   @map("s8_pulled_at") // issues built in the app: time of the SFG pull they were built from
   notPlanned  String[]  @default([]) @map("not_planned") // orders / items the build could not plan, with the reason
+  prevIssueId   Int?    @map("prev_issue_id") // the issue this one replaces (Card 3 guide v4, section 2)
+  issueNote     String  @default("") @map("issue_note") // the text the issuer writes for this version
+  review        Boolean @default(false) // true until the issue is confirmed: prints the review mark
+  rosterName    String? @map("roster_name") // title of the roster sheet Card 2 was built from
+  labourProblem String? @map("labour_problem") // why Card 2 could not be built, if so
+  drumProblem   String? @map("drum_problem") // why Cards 3 and 4 could not be built, if so
+  fingerprint   String? // hash of what was built: a scheduled run stores no new revision when it is unchanged
 
   plan         CardPlan[]
   labour       CardLabour[]

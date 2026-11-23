@@ -52,7 +52,15 @@ export function parseSources(g: Grids): Tables {
       const run = num(r[18]);
       return { prodOrder: text(r[0]), mcNo: textOrNull(r[1]), party: textOrNull(r[2]), cable: textOrNull(r[3]), sizeSqmm: num(r[4]), cores: num(r[5]), insulation: textOrNull(r[7]), lotNo: textOrNull(r[17]), runOrderInLot: run === null ? null : Math.round(run), supplyFrom: textOrNull(r[20]) };
     }),
-    lines: g.lines.filter(has(0)).map((r) => ({ prodOrder: text(r[0]), fgType: textOrNull(r[5]), stage: text(r[7]), sfgCode: text(r[8]), sfgItem: text(r[9]), netQty: num(r[10]) ?? 0, doneQty: num(r[11]) ?? 0, balance: num(r[12]) ?? 0, scope: textOrNull(r[14]), sfgBom: textOrNull(r[15]) })),
+    // The SFG pull sometimes repeats a line (same order, stage and item). One line per key; adding the copies would count it twice.
+    lines: [
+      ...new Map(
+        g.lines.filter(has(0)).map((r) => {
+          const l = { prodOrder: text(r[0]), fgType: textOrNull(r[5]), stage: text(r[7]), sfgCode: text(r[8]), sfgItem: text(r[9]), netQty: num(r[10]) ?? 0, doneQty: num(r[11]) ?? 0, balance: num(r[12]) ?? 0, scope: textOrNull(r[14]), sfgBom: textOrNull(r[15]) };
+          return [`${l.prodOrder}|${l.stage}|${l.sfgCode}`, l] as const;
+        }),
+      ).values(),
+    ],
     bom: g.bom.filter(has(0)).map((r) => ({ sfgBom: text(r[0]), lineNo: num(r[4]) ?? 0, materialCode: text(r[5]), material: text(r[6]), kgPerKm: num(r[7]) ?? 0 })),
     rm: g.rm.filter(has(2)).map((r) => ({ itemCode: text(r[2]), item: text(r[3]), qtyForPlanning: num(r[11]) ?? 0 })),
     // Men per shift = F; if blank, the number after "Day: mostly" in G; if neither, not known (guide 2.6).
@@ -96,6 +104,6 @@ export async function storeSources(db: PrismaClient, t: Tables, s8PulledAt: stri
         data: [log("S1", "Lots", t.lots.length), log("S1", "Orders", t.orders.length), log("S8", "Order lines", t.lines.length), log("S8", "Material per item", t.bom.length), log("S3", "Opening Stock", t.rm.length), log("S4", "Machines", t.men.length)],
       });
     },
-    { timeout: 60_000 },
+    { timeout: 60_000, maxWait: 20_000 }, // maxWait: a suspended Neon database takes several seconds to wake
   );
 }
