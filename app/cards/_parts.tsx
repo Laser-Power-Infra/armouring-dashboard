@@ -3,15 +3,15 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { ddMonYy } from "@/lib/cards/calendar";
 import type { CalCell } from "@/lib/cards/calendar";
-import { getIssues, issueName, type Issue } from "@/lib/cards/data";
+import { getIssues, issueName, versionLabel, type Issue } from "@/lib/cards/data";
 import { MainNav } from "@/components/dash/main-nav";
-import { IssuePicker, PrintButton, RegenerateButton } from "./_controls";
+import { ConfirmButton, IssuePicker, PrintButton, RegenerateButton } from "./_controls";
 
 export const CARD_TABS = [
-  { href: "/cards/production", label: "Production" },
-  { href: "/cards/labour", label: "Labour" },
-  { href: "/cards/drum-requirement", label: "Drum requirement" },
-  { href: "/cards/drum-assembly", label: "Drum assembly" },
+  { href: "/cards/production", label: "Production", title: "KGP Machine Production Cards" },
+  { href: "/cards/labour", label: "Labour", title: "KGP Labour Allocation Card" },
+  { href: "/cards/drum-requirement", label: "Drum requirement", title: "KGP Finished Goods Drum Requirement Card" },
+  { href: "/cards/drum-assembly", label: "Drum assembly", title: "KGP Drum Assembly Card" },
 ] as const;
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
@@ -34,8 +34,11 @@ export const loadedText = (issue: Issue) =>
 /** The app bar with the four card tabs, then the card itself. `variant` picks the card's calendar sizes. */
 export function CardShell({ active, picked, variant = "", children }: { active: (typeof CARD_TABS)[number]["href"]; picked: { issue: Issue; issues: Issue[] } | null; variant?: "" | "labour" | "drums"; children?: ReactNode }) {
   const query = picked && picked.issue.id !== picked.issues[0].id ? `?issue=${picked.issue.id}` : "";
+  // The footer of every printed page (guides, "PDF"): card name, version, page x of y.
+  const footer = picked && `${CARD_TABS.find((t) => t.href === active)!.title} · ${versionLabel(picked.issue)} · page `;
   return (
     <>
+      {footer && <style>{`@page card { @bottom-right { content: ${JSON.stringify(footer)} counter(page) " of " counter(pages); font: 7pt Arial, sans-serif; color: #555; } }`}</style>}
       <header className="no-print sticky top-0 z-20 border-b border-line-2 bg-surface">
         <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 sm:px-6">
           <span className="hidden text-body font-semibold sm:inline">Kharagpur</span>
@@ -43,13 +46,17 @@ export function CardShell({ active, picked, variant = "", children }: { active: 
           <div className="ml-auto flex items-center gap-2">
             {picked && <IssuePicker current={picked.issue.id} issues={picked.issues.map((i) => ({ id: i.id, name: issueName(i) }))} />}
             {active === "/cards/production" && <RegenerateButton />}
+            {picked?.issue.review && <ConfirmButton id={picked.issue.id} />}
             {picked && <PrintButton />}
           </div>
         </div>
       </header>
       <main className="kgp-stage flex-1">
         {picked ? (
-          <div className={`kgp-card ${variant}`}>{children}</div>
+          <div className={`kgp-card ${variant}`}>
+            {picked.issue.review && <div className="kgp-review" aria-hidden>FOR REVIEW PURPOSE ONLY</div>}
+            {children}
+          </div>
         ) : (
           <div className="mx-auto mt-16 max-w-md rounded-panel border border-line bg-surface p-6 text-center">
             <h1 className="text-title font-semibold">No cards have been issued yet</h1>

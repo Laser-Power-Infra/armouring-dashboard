@@ -101,7 +101,8 @@ describe("Card 1 sources", () => {
     const t = parseSources({
       lots: [row({ 0: 1, 1: "PL-001", 8: true }, 12), row({ 0: 2, 1: "PL-002", 8: "FALSE" }, 12), row({ 0: 3 }, 12)],
       orders: [row({ 0: "P726Y-00001", 1: "MC-1", 2: "Adani", 3: "3.5 CORE", 4: 300, 5: 3.5, 7: "XLPE", 17: "PL-001", 18: 2, 20: "Manufacture" }, 22), row({ 0: "P726Y-00002", 4: "-", 5: "-" }, 22)],
-      lines: [row({ 0: "P726Y-00001", 5: "BIG POWER CABLE - ARD", 7: "LAYING", 8: "MS1", 9: "3.5 CORE X 300", 10: 20, 11: "1,907", 12: 0.93, 14: "Kharagpur", 15: "U1" }, 16)],
+      // The second line repeats the first (as the SFG pull did on 23-Nov): kept once.
+      lines: [0, 1].map(() => row({ 0: "P726Y-00001", 5: "BIG POWER CABLE - ARD", 7: "LAYING", 8: "MS1", 9: "3.5 CORE X 300", 10: 20, 11: "1,907", 12: 0.93, 14: "Kharagpur", 15: "U1" }, 16)),
       bom: [row({ 0: "U1", 4: 1.001, 5: "RL1", 6: "PP FILLER", 7: 20, 8: "KG" }, 9)],
       rm: [row({ 2: "RL1", 3: "PP FILLER", 11: "4,000" }, 12), row({ 2: "RL2", 3: "TAPE" }, 12), row({ 3: "no code" }, 12)],
       men: [row({ 0: "Armouring No 5", 3: true, 5: 3, 6: "Day: mostly 5" }, 14), row({ 0: "Extruder No 35", 3: false, 6: "Day: mostly 3 (avg 3.3)" }, 14), row({ 0: "Extruder No 51", 6: "No ERP code – no history" }, 14), row({ 0: "Boiler 7", 5: 3 }, 14)],
@@ -110,6 +111,7 @@ describe("Card 1 sources", () => {
     expect(t.lots).toEqual([{ lotNo: "PL-001", runOrder: 1, approvedByMd: true }, { lotNo: "PL-002", runOrder: 2, approvedByMd: false }]);
     expect(t.orders[0]).toEqual({ prodOrder: "P726Y-00001", mcNo: "MC-1", party: "Adani", cable: "3.5 CORE", sizeSqmm: 300, cores: 3.5, insulation: "XLPE", lotNo: "PL-001", runOrderInLot: 2, supplyFrom: "Manufacture" });
     expect(t.orders[1]).toMatchObject({ sizeSqmm: null, cores: null, lotNo: null });
+    expect(t.lines).toHaveLength(1);
     expect(t.lines[0]).toMatchObject({ stage: "LAYING", sfgCode: "MS1", netQty: 20, doneQty: 1907, balance: 0.93, scope: "Kharagpur", sfgBom: "U1" });
     expect(t.bom).toEqual([{ sfgBom: "U1", lineNo: 1.001, materialCode: "RL1", material: "PP FILLER", kgPerKm: 20 }]);
     expect(t.rm).toEqual([{ itemCode: "RL1", item: "PP FILLER", qtyForPlanning: 4000 }, { itemCode: "RL2", item: "TAPE", qtyForPlanning: 0 }]);

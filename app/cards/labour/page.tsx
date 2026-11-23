@@ -13,6 +13,16 @@ export default async function LabourCardPage({ searchParams }: PageProps<"/cards
   if (!picked) return <CardShell active="/cards/labour" picked={null} />;
   const { issue } = picked;
   const { labour, spare } = await getLabour(db, issue.id);
+  // Nothing to show: the men could not be placed when this version was built.
+  if (!labour.length)
+    return (
+      <CardShell active="/cards/labour" picked={picked} variant="labour">
+        <Sheet>
+          <Top version={versionLabel(issue)} group="Kharagpur plant" title="KGP Labour Allocation Card" facts={[]} right={null} />
+          <How><b>Labour Allocation Card not built:</b> <span style={{ whiteSpace: "pre-line" }}>{issue.labourProblem ?? "No labour allocation was stored for this version"}</span></How>
+        </Sheet>
+      </CardShell>
+    );
   const card = labourCard(labour, spare, issue.d0);
   const f = card.facts;
 
@@ -25,7 +35,7 @@ export default async function LabourCardPage({ searchParams }: PageProps<"/cards
           title="KGP Labour Allocation Card"
           facts={[
             ["Card period", f.period],
-            ["Follows", `Machine Production Cards ${versionLabel(issue)}`],
+            ["Follows", `Machine Production Cards ${versionLabel(issue)}${issue.rosterName ? ` (roster ${issue.rosterName})` : ""}`],
             ["Shifts and weekly offs", "Taken from the roster, not changed here"],
             ["Machine-shifts to fill", <b key="v">{f.toFill}</b>],
             ["With an operator", <span key="v"><b>{f.withOperator}</b> of {f.toFill}</span>],
@@ -47,6 +57,8 @@ export default async function LabourCardPage({ searchParams }: PageProps<"/cards
             </>
           }
         />
+        {/* Built, but from incomplete sheet data: say so in the attention colour. */}
+        {issue.labourProblem && <How><Sec><b>Check:</b> {issue.labourProblem}</Sec></How>}
         <How><b>How to read this card:</b> this page shows only what needs action. After it there is one page for each date, showing who is on which machine. Words in <Sec>this colour</Sec> need attention.</How>
         <ActionHead title="Needs action" cardFor="Devika" />
         {card.needsAction.length ? (
@@ -73,7 +85,7 @@ export default async function LabourCardPage({ searchParams }: PageProps<"/cards
       </Sheet>
       {card.days.map((d) => (
         <Sheet key={d.day}>
-          <div className="grp">KGP Labour Allocation Card – who is on which machine</div>
+          <div className="grp">KGP Labour Allocation Card · who is on which machine</div>
           <h2>{d.title}</h2>
           {d.machines.length > 0 && (
             <table className="t">
@@ -131,7 +143,7 @@ function Shift({ s }: { s: ShiftCell }) {
     <>
       <td className={s.bad ? "c badc" : "c"}>{s.men}</td>
       <td>
-        {s.operator ? <b>{s.operator}</b> : <Sec>No experienced operator – plant to name</Sec>}
+        {s.operator ? <b>{s.operator}</b> : <Sec>{s.notSet ? "Men per shift not set" : "No experienced operator – plant to name"}</Sec>}
         {s.usual && <div className="sm">his usual machine: {s.usual}</div>}
         {s.confirm && <div className="sec">to confirm – {s.confirm}</div>}
       </td>

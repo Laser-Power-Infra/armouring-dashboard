@@ -3,7 +3,7 @@ import type { PrismaClient } from "../generated/prisma/client.ts";
 import { ddMonYy } from "./calendar.ts";
 import type { Day, DrumAssemblyRow, DrumNeedRow, DrumStockRow, LabourRow, PlanRow, SpareRow } from "./sheet.ts";
 
-export type Issue = { id: number; version: string; issueDate: Day; rev: number; d0: Day; loadedAt: Date; /** Set on issues built in the app. */ s8PulledAt: string | null; notPlanned: string[] };
+export type Issue = { id: number; version: string; issueDate: Day; rev: number; d0: Day; loadedAt: Date; /** Set on issues built in the app. */ s8PulledAt: string | null; notPlanned: string[]; prevIssueId: number | null; issueNote: string; /** Not confirmed yet: every page prints the review mark. */ review: boolean; rosterName: string | null; labourProblem: string | null; drumProblem: string | null };
 
 type Db = Pick<PrismaClient, "cardIssue" | "cardPlan" | "cardLabour" | "cardSpareMen" | "cardDrumNeed" | "cardDrumAssembly" | "cardDrumStock">;
 const day = (d: Date): Day => d.toISOString().slice(0, 10);
@@ -17,7 +17,7 @@ export const versionLabel = (i: Pick<Issue, "issueDate" | "rev">) => `VERSION ${
 /** Every stored issue, newest first. */
 export async function getIssues(db: Db): Promise<Issue[]> {
   const rows = await db.cardIssue.findMany({ orderBy: [{ issueDate: "desc" }, { rev: "desc" }] });
-  return rows.map((r) => ({ id: r.id, version: r.version, issueDate: day(r.issueDate), rev: r.rev, d0: day(r.d0), loadedAt: r.loadedAt, s8PulledAt: r.s8PulledAt, notPlanned: r.notPlanned }));
+  return rows.map((r) => ({ id: r.id, version: r.version, issueDate: day(r.issueDate), rev: r.rev, d0: day(r.d0), loadedAt: r.loadedAt, s8PulledAt: r.s8PulledAt, notPlanned: r.notPlanned, prevIssueId: r.prevIssueId, issueNote: r.issueNote, review: r.review, rosterName: r.rosterName, labourProblem: r.labourProblem, drumProblem: r.drumProblem }));
 }
 
 export async function getCardPlan(db: Db, issueId: number): Promise<PlanRow[]> {

@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { getDrums, versionLabel } from "@/lib/cards/data";
-import { drumAssemblyCard } from "@/lib/cards/drums";
+import { drumChanges, drumAssemblyCard } from "@/lib/cards/drums";
 import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
 
 // Card 4, KGP Drum Assembly Card (build spec 9): what cannot be made yet, then which drums to make day by day.
@@ -12,8 +12,20 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
   const picked = await pickIssue(searchParams);
   if (!picked) return <CardShell active="/cards/drum-assembly" picked={null} />;
   const { issue } = picked;
-  const { assembly, stock } = await getDrums(db, issue.id);
-  const card = drumAssemblyCard(assembly, stock, issue.d0);
+  const { need, assembly, stock } = await getDrums(db, issue.id);
+  // Nothing to show: the drum sheets could not be read when this version was built.
+  if (!need.length)
+    return (
+      <CardShell active="/cards/drum-assembly" picked={picked} variant="drums">
+        <Sheet>
+          <Top version={versionLabel(issue)} group="Kharagpur plant" title="KGP Drum Assembly Card" facts={[]} right={null} />
+          <How><b>KGP Drum Assembly Card not built:</b> <span style={{ whiteSpace: "pre-line" }}>{issue.drumProblem ?? "No drum data was stored for this version"}</span></How>
+        </Sheet>
+      </CardShell>
+    );
+  const prev = picked.issues.find((i) => i.id === issue.prevIssueId);
+  const changes = prev && drumChanges(issue, prev, need, (await getDrums(db, prev.id)).need);
+  const card = drumAssemblyCard(assembly, stock, issue.d0, need);
   const f = card.facts;
 
   return (
@@ -50,6 +62,27 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
           }
         />
         <How><b>How to read this card:</b> this page shows the totals and what is held up. The next pages list, day by day, which drums to make. “Make by” is the date the drum must be ready. Words in <Sec>this colour</Sec> need attention.</How>
+        {changes && (
+          <>
+            <How><b>{changes.name} replaces {changes.prevName}:</b> {changes.note} Drums to assemble up to {changes.upTo}: {changes.toMake} ({changes.prevName}: {changes.prevToMake}). The table compares with {changes.prevName}.</How>
+            <table className="t">
+              <Cols widths={[36, 24, 20, 20]} />
+              <thead>
+                <tr><th>Order</th><th>Drum size</th><th>{changes.prevName} – to assemble</th><th>{changes.name} – to assemble</th></tr>
+              </thead>
+              <tbody>
+                {changes.rows.map((r) => (
+                  <tr key={r.order}>
+                    <td>{r.order}</td>
+                    <td>{r.known ? r.size : <Sec>{r.size}</Sec>}</td>
+                    <td>{r.prev}</td>
+                    <td>{r.now}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
         {card.cannot.length > 0 && (
           <>
             <ActionHead title="Cannot be made yet" cardFor="Srikant Rao" />

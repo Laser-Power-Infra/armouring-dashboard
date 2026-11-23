@@ -1,7 +1,6 @@
 // STEP 1 of Card 1: the plan (docs/final guide for card 1.md, section 4). Pure: tables in, Card plan rows out.
 import { addDays, dMon } from "./calendar.ts";
 import { EXT51_ORDERS, MACHINES, type MachineName } from "./machines.ts";
-import { WIN } from "./production.ts";
 import type { Day, PlanRow } from "./sheet.ts";
 import type { Tables } from "./sources.ts";
 
@@ -187,8 +186,8 @@ export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: st
   const sum = <T>(list: T[], f: (x: T) => number) => list.reduce((s, x) => s + f(x), 0);
   const stocks = (m: Map<unknown, Stock>) => sum([...m.values()], (s) => s.all);
 
-  // ── 4.3 day simulation. The guide runs 70 days but stores only the card's 15; later days cannot change them. ──
-  for (let d = 0; d < WIN; d++) {
+  // ── 4.3 day simulation: all 70 days are kept. Card 1 prints the first 15; Card 3 needs outer-sheath dates past them. ──
+  for (let d = 0; d < 70; d++) {
     const used = new Map<string, number>();
     const left = (m: MachineName) => 1 - (used.get(m) ?? 0);
     const kgUsed = new Map<string, number>();
