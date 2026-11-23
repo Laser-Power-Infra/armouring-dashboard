@@ -472,9 +472,11 @@ model MachineMen {
 
 model MdRules {
   id        Int      @id @default(autoincrement())
-  topic     String
+  code      String? // the rule's own number, e.g. CR-B-04; a replacement keeps the code of the rule it replaces
+  topic     String // the rule's title
   rule      String // MD sir's wording, as given
   summary   String? // written by the agent(reframed)
+  details   Json? // the rest of the rule as given: section, rule_type, condition, on_fail, message_on_fail ...
   givenOn   DateTime @map("given_on") @db.Date
   newRuleId Int?     @map("new_rule_id") // set on an old rule: the rule that replaced it
   newRule   MdRules?  @relation("OldToNew", fields: [newRuleId], references: [id])
@@ -482,5 +484,6 @@ model MdRules {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([topic])
+  @@index([code])
   @@map("md_rules")
 }

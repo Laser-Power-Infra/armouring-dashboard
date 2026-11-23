@@ -1,0 +1,1036 @@
+{
+  "ruleset": "KGP Club & Run",
+  "version": "1.0",
+  "date": "2026-11-23",
+  "approved_by": "Deepak Goel (MD)",
+  "sheet": {
+    "name": "Club & Run Sheet - KGP Production Lots",
+    "spreadsheet_id": "1fOY-x0tEh20S8jC2cHg2LkaF8N1bGAcHYGaKJNlF_30"
+  },
+  "scope": "Only rules for which orders go into the sheet, how lots are made and how lots are approved. Machine, pacing, card and drum rules are not in this set.",
+  "how_to_read": {
+    "rule_type": {
+      "include_filter": "decides if an order enters the sheet",
+      "lot_check": "checked for each order before it goes into a lot",
+      "limit": "a fixed limit (km, stages)",
+      "permission": "who may write a field",
+      "alert": "do not stop; raise a flag or ask the MD",
+      "override": "an exception that lifts other rules",
+      "info": "explains a rule for people; no automatic check"
+    },
+    "on_fail": {
+      "skip": "do not add the order",
+      "block": "do not create or change the lot; show message",
+      "deny_write": "refuse the write",
+      "ask_md": "hold and ask the MD",
+      "flag": "allow but show the message"
+    },
+    "ops": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "lt",
+      "lte",
+      "gt",
+      "gte",
+      "contains",
+      "not_contains",
+      "starts_with",
+      "is_not_empty",
+      "subset_of",
+      "eq_lot (order field equals lot field)"
+    ],
+    "condition_logic": "'all' = every item true, 'any' = at least one true, 'if/then' = check 'then' only when 'if' is true",
+    "message_placeholders": "{field} in a message is replaced by that field's value",
+    "to_confirm": "a value written 'to confirm by MD' is not yet decided - do not invent a number"
+  },
+  "rule_count": 45,
+  "rules": [
+    {
+      "rule_id": "CR-A-01",
+      "section": "Purpose",
+      "title": "What Club & Run is",
+      "rule_text": "Similar orders are put into one numbered production lot (PL-001, PL-002 ...) and all orders of that lot are run together at every stage.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-A-02",
+      "section": "Purpose",
+      "title": "Why orders are clubbed",
+      "rule_text": "Every item change stops a machine for hours, so similar orders are run together.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "values": {
+        "changeover_hours": {
+          "conductor": 8,
+          "extruder": 6,
+          "laying": 6,
+          "armouring_min": 4,
+          "armouring_max": 8,
+          "outer_sheath": 7
+        }
+      },
+      "override_by": null,
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-A-03",
+      "section": "Purpose",
+      "title": "Lots run in Run Order",
+      "rule_text": "The plant runs approved lots one after another in Run Order and finishes a stage for the whole lot before the next lot.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-04",
+      "section": "Which orders go in the sheet",
+      "title": "Only approved Kharagpur orders, all products",
+      "rule_text": "Every approved production order in Kharagpur's name goes into the sheet: LT cable, HT core, ACSR/AAAC, covered conductor and 1-core.",
+      "rule_type": "include_filter",
+      "applies_to": "order",
+      "condition": {
+        "all": [
+          {
+            "field": "order.approved",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "any": [
+              {
+                "field": "order.prod_order_no",
+                "op": "starts_with",
+                "value": "P7"
+              },
+              {
+                "field": "order.stage_hod",
+                "op": "in",
+                "value": [
+                  "Mukesh",
+                  "Kamlesh"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "on_fail": "skip",
+      "message_on_fail": "Not added - order is not in Kharagpur's name.",
+      "override_by": "MD",
+      "source_date": "2026-11-14",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-05",
+      "section": "Which orders go in the sheet",
+      "title": "No unapproved orders",
+      "rule_text": "Unapproved orders never come into the sheet unless the MD says so for that order.",
+      "rule_type": "include_filter",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.approved",
+        "op": "eq",
+        "value": true
+      },
+      "on_fail": "skip",
+      "message_on_fail": "Not added - order {prod_order_no} is not approved.",
+      "override_by": "MD",
+      "source_date": "2026-11-14",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-06",
+      "section": "Which orders go in the sheet",
+      "title": "No Poly Park orders",
+      "rule_text": "Poly Park orders never come in. CC (circular conductor) cables and items needing 3.15 mm armour wire are Poly Park orders.",
+      "rule_type": "include_filter",
+      "applies_to": "order",
+      "condition": {
+        "all": [
+          {
+            "field": "order.plant",
+            "op": "neq",
+            "value": "Poly Park"
+          },
+          {
+            "field": "order.conductor_shape",
+            "op": "neq",
+            "value": "CC"
+          },
+          {
+            "field": "order.armour_wire_dia_mm",
+            "op": "neq",
+            "value": 3.15
+          }
+        ]
+      },
+      "on_fail": "skip",
+      "message_on_fail": "Not added - order {prod_order_no} belongs to Poly Park.",
+      "override_by": null,
+      "source_date": "2026-11-20",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-07",
+      "section": "Which orders go in the sheet",
+      "title": "No ABJ Syndicates orders",
+      "rule_text": "ABJ Syndicates orders never come in (manufacturing stopped).",
+      "rule_type": "include_filter",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.party",
+        "op": "not_contains",
+        "value": "ABJ Syndicates"
+      },
+      "on_fail": "skip",
+      "message_on_fail": "Not added - ABJ Syndicates manufacturing is stopped.",
+      "override_by": "MD",
+      "source_date": "2026-10-30",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-08",
+      "section": "Which orders go in the sheet",
+      "title": "No orders already finished by the plant",
+      "rule_text": "Orders that Kamlesh or Mukesh have already finished do not come in, even if the SFG dashboard shows a small balance.",
+      "rule_type": "include_filter",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.plant_marked_complete",
+        "op": "eq",
+        "value": false
+      },
+      "on_fail": "skip",
+      "message_on_fail": "Not added - plant has finished order {prod_order_no}.",
+      "override_by": "MD",
+      "source_date": "2026-11-18",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-09",
+      "section": "Which orders go in the sheet",
+      "title": "No clearance without production order",
+      "rule_text": "A manufacturing clearance that has no production order is not listed.",
+      "rule_type": "include_filter",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.prod_order_no",
+        "op": "is_not_empty"
+      },
+      "on_fail": "skip",
+      "message_on_fail": "Not added - clearance has no production order.",
+      "override_by": null,
+      "source_date": "2026-11-13",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-10",
+      "section": "Which orders go in the sheet",
+      "title": "HT orders: Kharagpur stages only",
+      "rule_text": "For HT orders Kharagpur makes only conductor, insulation and curing; after curing the core goes to Poly Park.",
+      "rule_type": "limit",
+      "applies_to": "order",
+      "condition": {
+        "if": {
+          "field": "order.product_type",
+          "op": "eq",
+          "value": "HT"
+        },
+        "then": {
+          "field": "order.kgp_stages",
+          "op": "subset_of",
+          "value": [
+            "conductor",
+            "insulation",
+            "curing"
+          ]
+        }
+      },
+      "on_fail": "block",
+      "message_on_fail": "HT order {prod_order_no}: only conductor, insulation and curing are at Kharagpur.",
+      "override_by": null,
+      "source_date": "2026-11-12",
+      "active": true
+    },
+    {
+      "rule_id": "CR-B-11",
+      "section": "Which orders go in the sheet",
+      "title": "Daily update of the sheet",
+      "rule_text": "The sheet is updated every day from manufacturing clearances and production orders (auto refresh at 11:47 and 16:47).",
+      "rule_type": "info",
+      "applies_to": "sheet",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "values": {
+        "refresh_times_ist": [
+          "11:47",
+          "16:47"
+        ]
+      },
+      "override_by": null,
+      "source_date": "2026-11-13",
+      "active": true
+    },
+    {
+      "rule_id": "CR-C-12",
+      "section": "Who may write what",
+      "title": "Only MD makes lots",
+      "rule_text": "Only the MD creates, changes or approves lots, and only he puts an order into a lot (Lot No).",
+      "rule_type": "permission",
+      "applies_to": "lot.*, order.lot_no",
+      "condition": {
+        "field": "user.role",
+        "op": "eq",
+        "value": "MD"
+      },
+      "on_fail": "deny_write",
+      "message_on_fail": "Only the MD can create, change or fill lots.",
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-C-13",
+      "section": "Who may write what",
+      "title": "Approved by MD is MD-only",
+      "rule_text": "Only the MD ticks or unticks 'Approved by MD'. The plant does not start a lot until it is ticked.",
+      "rule_type": "permission",
+      "applies_to": "lot.approved_by_md",
+      "condition": {
+        "field": "user.role",
+        "op": "eq",
+        "value": "MD"
+      },
+      "on_fail": "deny_write",
+      "message_on_fail": "Only the MD can change 'Approved by MD'.",
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-C-14",
+      "section": "Who may write what",
+      "title": "Supply from is MD-only",
+      "rule_text": "Only the MD fills 'Supply from' (Manufacture / Dead stock / Old stock / Free stock). If stock matches, the system only shows it.",
+      "rule_type": "permission",
+      "applies_to": "order.supply_from",
+      "condition": {
+        "field": "user.role",
+        "op": "eq",
+        "value": "MD"
+      },
+      "on_fail": "deny_write",
+      "message_on_fail": "Only the MD can fill 'Supply from'.",
+      "values": {
+        "supply_from_options": [
+          "Manufacture",
+          "Dead stock",
+          "Old stock",
+          "Free stock"
+        ]
+      },
+      "override_by": null,
+      "source_date": "2026-11-14",
+      "active": true
+    },
+    {
+      "rule_id": "CR-C-15",
+      "section": "Who may write what",
+      "title": "What the auto refresh may write",
+      "rule_text": "The auto refresh writes only stage balances, Approved Yes/No, Pending from and the time stamp. New approved orders come in with Lot No blank.",
+      "rule_type": "permission",
+      "applies_to": "auto_refresh",
+      "condition": {
+        "field": "write.columns",
+        "op": "subset_of",
+        "value": [
+          "stage_balances",
+          "approved",
+          "pending_from",
+          "refreshed_at",
+          "new_order_row"
+        ]
+      },
+      "on_fail": "deny_write",
+      "message_on_fail": "Auto refresh tried to write a column it does not own.",
+      "override_by": null,
+      "source_date": "2026-11-14",
+      "active": true
+    },
+    {
+      "rule_id": "CR-C-16",
+      "section": "Who may write what",
+      "title": "No typing in calculated fields",
+      "rule_text": "Run Order (Orders), the lot totals (Lots: orders, balance, conductor pending, insulation pending) and the Run Sheet are calculated, never typed.",
+      "rule_type": "permission",
+      "applies_to": "order.run_order, lot.totals, run_sheet",
+      "condition": {
+        "field": "write.source",
+        "op": "eq",
+        "value": "calculated"
+      },
+      "on_fail": "deny_write",
+      "message_on_fail": "This field is calculated and cannot be typed in.",
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-C-17",
+      "section": "Who may write what",
+      "title": "Removing rows",
+      "rule_text": "Rows added by hand without checks are removed. An order with nothing left to make is removed only on the MD's word.",
+      "rule_type": "permission",
+      "applies_to": "order.delete",
+      "condition": {
+        "field": "user.role",
+        "op": "eq",
+        "value": "MD"
+      },
+      "on_fail": "ask_md",
+      "message_on_fail": "Ask the MD before removing order {prod_order_no}.",
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-D-18",
+      "section": "Balances",
+      "title": "Balances from SFG dashboard",
+      "rule_text": "Stage balances come from the SFG dashboard. Never plan from Club & Run balances alone.",
+      "rule_type": "info",
+      "applies_to": "order.stage_balances",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "data_source": {
+        "order.stage_balances": "SFG dashboard (ERP)"
+      },
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-D-19",
+      "section": "Balances",
+      "title": "Doubtful figures marked, not overwritten",
+      "rule_text": "A doubtful balance is not overwritten; it is marked 'to confirm'.",
+      "rule_type": "alert",
+      "applies_to": "order.stage_balances",
+      "condition": {
+        "field": "balance.doubtful",
+        "op": "eq",
+        "value": false
+      },
+      "on_fail": "flag",
+      "message_on_fail": "Balance of {prod_order_no} at {stage} is doubtful - to confirm.",
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-D-20",
+      "section": "Balances",
+      "title": "Units",
+      "rule_text": "Conductor and insulation are counted in core km; laying onwards in cable km.",
+      "rule_type": "info",
+      "applies_to": "order.stage_balances",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "values": {
+        "core_km_stages": [
+          "conductor",
+          "insulation"
+        ],
+        "cable_km_stages": [
+          "laying",
+          "inner_sheath",
+          "armouring",
+          "outer_sheath"
+        ]
+      },
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-21",
+      "section": "Making a lot",
+      "title": "Conductor first",
+      "rule_text": "Everything starts from conductor. A lot whose conductor is complete is allowed to finish first.",
+      "rule_type": "lot_check",
+      "applies_to": "lot",
+      "condition": {
+        "field": "lot.conductor_complete",
+        "op": "eq",
+        "value": true,
+        "then": "priority_first"
+      },
+      "on_fail": "flag",
+      "message_on_fail": "Lot {lot_no} has conductor complete - let it finish first.",
+      "override_by": "MD",
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-22",
+      "section": "Making a lot",
+      "title": "Order without conductor waits",
+      "rule_text": "An order whose conductor has not started goes into no lot, unless a running lot is making the same conductor size. Otherwise it waits under 'Waiting - no lot' and the MD is told.",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "any": [
+          {
+            "field": "order.conductor_started",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "all": [
+              {
+                "field": "lot.status",
+                "op": "eq",
+                "value": "Running"
+              },
+              {
+                "field": "order.conductor_size_sqmm",
+                "op": "eq_lot",
+                "value": "lot.conductor_size_sqmm"
+              }
+            ]
+          }
+        ]
+      },
+      "on_fail": "block",
+      "message_on_fail": "Order {prod_order_no}: conductor not started and no running lot makes {conductor_size_sqmm} sq mm - Waiting, no lot.",
+      "override_by": "MD",
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-23",
+      "section": "Making a lot",
+      "title": "Same conductor size",
+      "rule_text": "All orders in a lot have the same conductor size (e.g. 25 and 95 sq mm never together).",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "field": "order.conductor_size_sqmm",
+        "op": "eq_lot",
+        "value": "lot.conductor_size_sqmm"
+      },
+      "on_fail": "block",
+      "message_on_fail": "Order {prod_order_no} failed conductor size check: order {order.conductor_size_sqmm}, lot {lot.conductor_size_sqmm}.",
+      "override_by": "MD (that exact order, after being told the size differs)",
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-24",
+      "section": "Making a lot",
+      "title": "One armour size per lot",
+      "rule_text": "All orders in a lot have the same armour size. Strip 4x0.6 and 4x0.8 are separate; wire lots go by wire size; strip and wire are never together.",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "all": [
+          {
+            "field": "order.armour_type",
+            "op": "eq_lot",
+            "value": "lot.armour_type"
+          },
+          {
+            "field": "order.armour_size",
+            "op": "eq_lot",
+            "value": "lot.armour_size"
+          }
+        ]
+      },
+      "on_fail": "block",
+      "message_on_fail": "Order {prod_order_no} failed armour check: order {order.armour_size}, lot {lot.armour_size}.",
+      "override_by": "MD (urgent order only, see CR-G-40)",
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-25",
+      "section": "Making a lot",
+      "title": "Armour size from ERP BOM, must be confirmed",
+      "rule_text": "Armour size is taken from the ERP bill of material on the SFG dashboard, never from the Club & Run Armour column alone. If the armour is 'to confirm', the order is not added.",
+      "rule_type": "lot_check",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.armour_size",
+        "op": "neq",
+        "value": "to confirm"
+      },
+      "on_fail": "block",
+      "message_on_fail": "Order {prod_order_no}: armour size not confirmed - not added.",
+      "data_source": {
+        "order.armour_size": "ERP BOM via SFG dashboard (armouring line SFG_BOM)"
+      },
+      "override_by": "MD (urgent order only, see CR-G-41)",
+      "source_date": "2026-11-17",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-26",
+      "section": "Making a lot",
+      "title": "Same conductor type",
+      "rule_text": "L series (normal conductor) and SP/S series (special conductor) are never in the same lot.",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "field": "order.conductor_type",
+        "op": "eq_lot",
+        "value": "lot.conductor_type"
+      },
+      "on_fail": "block",
+      "message_on_fail": "Order {prod_order_no} failed conductor type check: order {order.conductor_type}, lot {lot.conductor_type}.",
+      "data_source": {
+        "order.conductor_type": "MC series: L = normal, SP/S = special"
+      },
+      "override_by": "MD (urgent order only, see CR-G-40)",
+      "source_date": "2026-11-12",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-27",
+      "section": "Making a lot",
+      "title": "Small and big cable never mixed",
+      "rule_text": "Small and big cable are never in the same lot. Use the SFG category 'SMALL POWER CABLE' / 'BIG POWER CABLE'.",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "field": "order.fg_category",
+        "op": "eq_lot",
+        "value": "lot.fg_category"
+      },
+      "on_fail": "block",
+      "message_on_fail": "Order {prod_order_no} failed small/big check: order {order.fg_category}, lot {lot.fg_category}.",
+      "data_source": {
+        "order.fg_category": "SFG dashboard FG_LEVEL_4_NAME"
+      },
+      "override_by": "MD (urgent order only, see CR-G-40)",
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-28",
+      "section": "Making a lot",
+      "title": "Same insulation where possible",
+      "rule_text": "A lot should have one insulation compound. Mixing XLPE and PVC is shown to the MD, never done silently.",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "field": "order.insulation",
+        "op": "eq_lot",
+        "value": "lot.insulation"
+      },
+      "on_fail": "ask_md",
+      "message_on_fail": "Order {prod_order_no} is {order.insulation}, lot {lot_no} is {lot.insulation} - MD to decide.",
+      "override_by": "MD",
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-29",
+      "section": "Making a lot",
+      "title": "Lot size limit",
+      "rule_text": "A cable lot is at most about 80 km. An ACSR/AAAC lot is at most 500 km.",
+      "rule_type": "limit",
+      "applies_to": "lot",
+      "condition": {
+        "any": [
+          {
+            "all": [
+              {
+                "field": "lot.product_type",
+                "op": "in",
+                "value": [
+                  "ACSR",
+                  "AAAC"
+                ]
+              },
+              {
+                "field": "lot.total_km",
+                "op": "lte",
+                "value": 500
+              }
+            ]
+          },
+          {
+            "all": [
+              {
+                "field": "lot.product_type",
+                "op": "not_in",
+                "value": [
+                  "ACSR",
+                  "AAAC"
+                ]
+              },
+              {
+                "field": "lot.total_km",
+                "op": "lte",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "on_fail": "block",
+      "message_on_fail": "Lot {lot_no} is {lot.total_km} km - over its limit.",
+      "values": {
+        "cable_lot_max_km": 80,
+        "cable_lot_target_km": "70-80",
+        "acsr_aaac_lot_max_km": 500
+      },
+      "override_by": "MD",
+      "source_date": "2026-11-12",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-30",
+      "section": "Making a lot",
+      "title": "Failed check stops the lot",
+      "rule_text": "If any lot check fails, the lot is not created or changed, and the MD is told which order failed which check.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-31",
+      "section": "Making a lot",
+      "title": "Check table before adding",
+      "rule_text": "Before an order is put into a lot, the MD is shown a check table (FG category, conductor size, armour, conductor type, insulation, lot km) with a tick or cross for each. 'Nearest lot' is never a reason.",
+      "rule_type": "info",
+      "applies_to": "order_vs_lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "values": {
+        "check_table_columns": [
+          "fg_category",
+          "conductor_size_sqmm",
+          "armour_type_size",
+          "conductor_type",
+          "insulation",
+          "lot_total_km"
+        ]
+      },
+      "override_by": null,
+      "source_date": "2026-11-17",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-32",
+      "section": "Making a lot",
+      "title": "Show the delay to later lots",
+      "rule_text": "Adding an order to an earlier lot pushes every later lot back (about 7 km a day at armouring). This delay is shown.",
+      "rule_type": "alert",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "field": "lot.has_later_lots",
+        "op": "eq",
+        "value": false
+      },
+      "on_fail": "flag",
+      "message_on_fail": "Adding {prod_order_no} ({km} km) delays later lots by about {km/7} days.",
+      "values": {
+        "armouring_km_per_day": 7
+      },
+      "override_by": null,
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-33",
+      "section": "Making a lot",
+      "title": "One order at a time, written after MD's yes",
+      "rule_text": "When the MD goes order by order, one order is suggested at a time and written only after his yes.",
+      "rule_type": "info",
+      "applies_to": "order_vs_lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-16",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-34",
+      "section": "Making a lot",
+      "title": "MD decides grouping and priority",
+      "rule_text": "Only the lots the MD names are made. The MD is shown the balance; he decides the grouping and the lot priority.",
+      "rule_type": "permission",
+      "applies_to": "lot.create, lot.run_order",
+      "condition": {
+        "field": "user.role",
+        "op": "eq",
+        "value": "MD"
+      },
+      "on_fail": "deny_write",
+      "message_on_fail": "Only the MD decides lots and their priority.",
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-E-35",
+      "section": "Making a lot",
+      "title": "Show dead stock with lot proposals",
+      "rule_text": "When lots are proposed, dead stock at each stage (conductor, insulated core, laid-up, finished goods) is shown.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-10",
+      "active": true
+    },
+    {
+      "rule_id": "CR-F-36",
+      "section": "Small orders and dead stock",
+      "title": "Very small orders not made",
+      "rule_text": "Very small power cable orders (about 1-2 km) are not made; they are supplied from dead stock or bought from the market. Ask the MD first.",
+      "rule_type": "alert",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.total_km",
+        "op": "gt",
+        "value": 2
+      },
+      "on_fail": "ask_md",
+      "message_on_fail": "Order {prod_order_no} is only {order.total_km} km - dead stock, market or make?",
+      "values": {
+        "small_order_max_km": 2
+      },
+      "override_by": "MD",
+      "source_date": "2026-11-12",
+      "active": true
+    },
+    {
+      "rule_id": "CR-F-37",
+      "section": "Small orders and dead stock",
+      "title": "Started small order cannot use dead stock",
+      "rule_text": "If any stage of a small order is already made, it cannot be supplied from dead stock - report it.",
+      "rule_type": "alert",
+      "applies_to": "order",
+      "condition": {
+        "if": {
+          "field": "order.total_km",
+          "op": "lte",
+          "value": 2
+        },
+        "then": {
+          "field": "order.any_stage_done",
+          "op": "eq",
+          "value": false
+        }
+      },
+      "on_fail": "flag",
+      "message_on_fail": "Small order {prod_order_no} already has {stage} made - cannot use dead stock.",
+      "override_by": null,
+      "source_date": "2026-11-12",
+      "active": true
+    },
+    {
+      "rule_id": "CR-F-38",
+      "section": "Small orders and dead stock",
+      "title": "What counts as dead stock",
+      "rule_text": "Dead stock = what the SFG dashboard calls dead stock + finished goods made more than 90 days ago and not dispatched, at any location.",
+      "rule_type": "info",
+      "applies_to": "stock",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "values": {
+        "old_stock_days": 90,
+        "locations": "all"
+      },
+      "override_by": null,
+      "source_date": "2026-11-14",
+      "active": true
+    },
+    {
+      "rule_id": "CR-F-39",
+      "section": "Small orders and dead stock",
+      "title": "Dead stock substitute",
+      "rule_text": "Use the nearest bigger size with the same conductor shape (shaped for shaped; never circular for shaped).",
+      "rule_type": "lot_check",
+      "applies_to": "order_vs_stock",
+      "condition": {
+        "all": [
+          {
+            "field": "stock.conductor_shape",
+            "op": "eq",
+            "value": "order.conductor_shape"
+          },
+          {
+            "field": "stock.conductor_size_sqmm",
+            "op": "gte",
+            "value": "order.conductor_size_sqmm"
+          }
+        ]
+      },
+      "on_fail": "block",
+      "message_on_fail": "Stock {stock.item} does not match order {prod_order_no} (shape or size).",
+      "override_by": "MD",
+      "source_date": "2026-11-12",
+      "active": true
+    },
+    {
+      "rule_id": "CR-G-40",
+      "section": "Urgent order exception",
+      "title": "Urgent order may join a running lot",
+      "rule_text": "When the MD calls an order urgent, it may join the closest running lot with the same armour, even if size, insulation, conductor type or small/big differ. The differences and extra runs are written in Remarks.",
+      "rule_type": "override",
+      "applies_to": "order_vs_lot",
+      "condition": {
+        "all": [
+          {
+            "field": "order.urgent_by_md",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "lot.status",
+            "op": "eq",
+            "value": "Running"
+          },
+          {
+            "field": "order.armour_size",
+            "op": "eq_lot",
+            "value": "lot.armour_size"
+          }
+        ]
+      },
+      "on_fail": "block",
+      "message_on_fail": "Urgent order {prod_order_no}: no running lot with the same armour.",
+      "overrides_rules": [
+        "CR-E-23",
+        "CR-E-26",
+        "CR-E-27",
+        "CR-E-28"
+      ],
+      "required_fields_on_pass": [
+        "order.remarks (differences and extra runs)"
+      ],
+      "override_by": "MD",
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-G-41",
+      "section": "Urgent order exception",
+      "title": "Urgent order with armour not confirmed",
+      "rule_text": "If an urgent order's armour is not confirmed, write 'most likely <size> - GTP being checked'. If the GTP differs, move it out and tell the MD.",
+      "rule_type": "alert",
+      "applies_to": "order",
+      "condition": {
+        "field": "order.armour_gtp_confirmed",
+        "op": "eq",
+        "value": true
+      },
+      "on_fail": "flag",
+      "message_on_fail": "Order {prod_order_no}: armour most likely {armour_size} - GTP being checked.",
+      "override_by": "MD",
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-H-42",
+      "section": "Choosing the next lot - no traffic jam",
+      "title": "Next lot picked by conductor",
+      "rule_text": "When a running lot's conductor is nearly finished, the next lot for that conductor is brought to the MD for approval in time.",
+      "rule_type": "alert",
+      "applies_to": "lot",
+      "condition": {
+        "field": "lot.conductor_balance_pct",
+        "op": "gt",
+        "value": "to confirm by MD"
+      },
+      "on_fail": "flag",
+      "message_on_fail": "Lot {lot_no}: conductor nearly finished - bring next {conductor_size_sqmm} sq mm lot for approval.",
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-H-43",
+      "section": "Choosing the next lot - no traffic jam",
+      "title": "No traffic jam",
+      "rule_text": "Traffic jam = extra material piling up between stages or plants (extra conductor at Kharagpur, HT core not taped or taped core not laid at Poly Park). None may be created.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-H-44",
+      "section": "Choosing the next lot - no traffic jam",
+      "title": "Traffic jam check before any lot",
+      "rule_text": "Before a lot is suggested: (1) see which running lots' conductor is ending, machine by machine; (2) suggest the next lot from that; (3) check stock already at the next stage at Kharagpur and Poly Park; (4) check the new material reaches the next stage only when that stage can take it.",
+      "rule_type": "lot_check",
+      "applies_to": "lot",
+      "condition": {
+        "field": "next_stage.stock_plus_new_lot_km",
+        "op": "lte",
+        "value": "next_stage.capacity_km_by_arrival_date"
+      },
+      "on_fail": "ask_md",
+      "message_on_fail": "Lot {lot_no}: Traffic jam - next stage already holds {next_stage.stock_km} km.",
+      "data_source": {
+        "next_stage.stock (HT)": "HT Cable Core Stock - Daily sheet (core not taped, taped core not laid)"
+      },
+      "override_by": "MD",
+      "source_date": "2026-11-19",
+      "active": true
+    },
+    {
+      "rule_id": "CR-H-45",
+      "section": "Choosing the next lot - no traffic jam",
+      "title": "Show the traffic jam result",
+      "rule_text": "Every lot suggestion shows one line 'Traffic jam check: OK / Jam' with figures. If the next stage's pace is unknown, ask Poly Park (Supratim) before approval.",
+      "rule_type": "info",
+      "applies_to": "lot",
+      "condition": null,
+      "on_fail": null,
+      "message_on_fail": null,
+      "override_by": null,
+      "source_date": "2026-11-19",
+      "active": true
+    }
+  ]
+}

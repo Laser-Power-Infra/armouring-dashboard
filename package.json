@@ -10,6 +10,7 @@
     "test": "vitest run",
     "load:cards": "node scripts/load-cards.ts",
     "build:card1": "node scripts/build-card1.ts",
+    "seed:rules": "node scripts/seed-rules.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
