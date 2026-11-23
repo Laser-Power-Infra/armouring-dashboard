@@ -1,29 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  armouringPending,
-  avgPerWorkingDay,
-  bobbinPool,
-  bobbinTotals,
-  dailyOutput,
-  lastShiftDays,
-  lengthFromTurns,
-  shiftDayOf,
-  summariseOrders,
-  waitingBetween,
-  waitingForLaying,
-  type OrderLineRow,
-} from "../../lib/dashboard/calc";
+import { avgPerWorkingDay, bobbinPool, bobbinTotals, dailyOutput, lastShiftDays, lengthFromTurns, shiftDayOf } from "../../lib/dashboard/calc";
+import { armouringPending, summariseOrders, waitingBetween, waitingForLaying } from "../fixtures/order-rules";
+import { kgpLines } from "../fixtures/order-lines";
 
-const line = (o: Partial<OrderLineRow> & Pick<OrderLineRow, "prodOrder" | "stage">): OrderLineRow => ({
-  sfgItem: o.stage,
-  customer: "ACME",
-  cable: "3.5C x 300",
-  coresPerCable: null,
-  orderedQty: 0,
-  doneQty: 0,
-  approved: true,
-  ...o,
-});
 
 describe("shift day (md §7.1)", () => {
   it("07:59 IST belongs to the previous date; 08:00 starts the new one", () => {
@@ -36,26 +15,43 @@ describe("shift day (md §7.1)", () => {
   });
 });
 
-describe("waiting cable (md §5 blocks 1–5)", () => {
-  const orders = summariseOrders([
-    line({ prodOrder: "P7-1", stage: "INNER_SHEATH", doneQty: 10 }),
-    line({ prodOrder: "P7-1", stage: "ARMOURING", orderedQty: 12, doneQty: 4 }),
-    line({ prodOrder: "P7-2", stage: "INNER_SHEATH", doneQty: 3 }),
-    line({ prodOrder: "P7-2", stage: "ARMOURING", orderedQty: 3, doneQty: 3, approved: false }),
-    // 3 full cores + 1 half core: 30 km full = 10 cable km, 8 km half = 8 cable km → 8
-    line({ prodOrder: "P7-3", stage: "INSULATION", sfgItem: "full", coresPerCable: 3, doneQty: 30 }),
-    line({ prodOrder: "P7-3", stage: "INSULATION", sfgItem: "half", coresPerCable: 1, doneQty: 8 }),
-    line({ prodOrder: "P7-3", stage: "LAYING", doneQty: 5 }),
-  ]);
+// The reference rules the Postgres views are proved against.
+describe("waiting cable reference rules (md §5 blocks 1–5)", () => {
+  const orders = summariseOrders(kgpLines);
 
-  it("inner done minus armouring done, biggest first, drops zero", () => {
-    expect(waitingBetween(orders, "INNER_SHEATH", "ARMOURING").map((r) => [r.prodOrder, r.km])).toEqual([["P7-1", 6]]);
+  it("inner done minus armouring done, biggest first, drops zero, negative and under half a metre", () => {
+    expect(waitingBetween(orders, "INNER_SHEATH", "ARMOURING").map((r) => [r.prodOrder, r.km])).toEqual([
+      ["P7-1", 6],
+      ["P7-4", 5],
+      ["P7-6", 2],
+    ]);
   });
   it("cores waiting for laying use the smallest core line", () => {
-    expect(waitingForLaying(orders)).toMatchObject([{ prodOrder: "P7-3", km: 3 }]);
+    expect(waitingForLaying(orders)).toMatchObject([
+      { prodOrder: "P7-3", km: 3 },
+      { prodOrder: "P7-8", km: 3 },
+    ]);
+  });
+  it("conductor minus insulation, in core km", () => {
+    expect(waitingBetween(orders, "CONDUCTOR", "INSULATION").map((r) => [r.prodOrder, r.km])).toEqual([["P7-8", 8]]);
+  });
+  it("armouring done minus outer sheath done", () => {
+    expect(waitingBetween(orders, "ARMOURING", "OUTER_SHEATH").map((r) => [r.prodOrder, r.km])).toEqual([
+      ["P7-1", 3],
+      ["P7-2", 3],
+      ["P7-5", 1],
+      ["P7-7", 1],
+    ]);
+  });
+  it("customer is the first non-empty one", () => {
+    expect(orders.find((o) => o.prodOrder === "P7-9")?.customer).toBe("ALPHA");
   });
   it("armouring pending carries approval", () => {
-    expect(armouringPending(orders)).toMatchObject([{ prodOrder: "P7-1", km: 8, approved: true }]);
+    expect(armouringPending(orders)).toMatchObject([
+      { prodOrder: "P7-1", km: 8, approved: true },
+      { prodOrder: "P7-7", km: 6, approved: true },
+      { prodOrder: "P7-6", km: 4, approved: false, customer: "", cable: "" },
+    ]);
   });
 });
 

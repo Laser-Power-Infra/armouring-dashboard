@@ -4,7 +4,9 @@ import { z } from "zod";
 import { roleFor, signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import { AuthShell, Field, FormError, inputClass, primaryButton } from "@/components/auth-shell";
+import { AuthShell, FormError } from "@/components/auth-shell";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 
 // Reads searchParams at request time; render on the server instead of prerendering a shell.
 export const instant = false;
@@ -51,21 +53,21 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       <form action={signUp} className="flex flex-col gap-4">
         {error && <FormError>{errors[error] ?? "Sign-up failed. Try again."}</FormError>}
         <Field label="Name">
-          <input name="name" required autoComplete="name" className={inputClass} />
+          <Input name="name" required autoComplete="name" />
         </Field>
         <Field label="Email">
-          <input name="email" type="email" required autoComplete="email" className={inputClass} />
+          <Input name="email" type="email" required autoComplete="email" />
         </Field>
         <Field label="Password">
-          <input name="password" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
-          <span className="text-[12px] font-normal text-ink-3">At least 8 characters</span>
+          <Input name="password" type="password" required minLength={8} autoComplete="new-password" />
+          <span className="text-caption font-normal text-ink-2">At least 8 characters</span>
         </Field>
-        <button type="submit" className={primaryButton}>
+        <Button type="submit" variant="primary" className="h-10 w-full">
           Create account
-        </button>
-        <p className="text-center text-[14px] text-ink-2">
+        </Button>
+        <p className="text-center text-label text-ink-2">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-accent">
+          <Link href="/login" className="font-medium text-primary">
             Sign in
           </Link>
         </p>

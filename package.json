@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "load:cards": "node scripts/load-cards.ts",
+    "build:card1": "node scripts/build-card1.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

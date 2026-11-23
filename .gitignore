@@ -41,3 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /lib/generated/
+
+# agent skills (reinstall from skills-lock.json) and design review screenshots
+/.agents/
+/.claude/skills/
+/.impeccable/review/

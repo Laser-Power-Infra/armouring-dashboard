@@ -1,15 +1,21 @@
 @import "tailwindcss";
 
-/* Apple-style grouped layout. Colours are tokens; dark mode redefines them. */
+/* Light only. Colour carries meaning (action, state, status) or nothing. */
 :root {
-  --bg: #f2f2f7;
+  --ground: #f5f5f7;
   --surface: #ffffff;
-  --surface-2: #f5f5f8;
   --ink: #1d1d1f;
   --ink-2: #6e6e73;
-  --ink-3: #8e8e93;
-  --line: #e5e5ea;
-  --accent: #0071e3;
+  --ink-3: #75757a;
+  --line: #d2d2d7;
+  --line-2: #e8e8ed;
+
+  --primary: #0066cc;
+  --primary-tint: #e8f1fb;
+  --secondary: #5856d6;
+  --secondary-tint: #eeeefb;
+  /* chart series only: lighter than the primary, so the two series still differ on a washed-out projector or in grey */
+  --secondary-soft: #908ee8;
 
   /* status: always paired with a text label, never colour alone */
   --critical: #d70015;
@@ -18,104 +24,91 @@
   --warning-bg: #fff2e2;
   --good: #248a3d;
   --good-bg: #e6f6ea;
-  --idle: #8944ab; /* md §10.5: a machine with no work gets its own colour */
 
-  /* chart series, validated with the dataviz palette checker (light surface) */
-  --day: #c77700;
-  --night: #5856d6;
-  --bar: #0071e3;
-  /* categorical slots 1-6 (dataviz reference palette, fixed order) */
-  --s1: #2a78d6;
-  --s2: #eb6834;
-  --s3: #1baf7a;
-  --s4: #eda100;
-  --s5: #e87ba4;
-  --s6: #008300;
-
-  /* one colour per block (md §7.4: users remember blocks by colour) */
-  --b-cable: #007aff;
-  --b-inner: #30b0c7;
-  --b-laying: #5856d6;
-  --b-insul: #af52de;
-  --b-outer: #00a39a;
-  --b-output: #ff9500;
-  --b-men: #34c759;
-  --b-bobbin: #ff2d55;
-  --b-work: #a2845e;
-  --b-entries: #8e8e93;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --surface: #1c1c1e;
-    --surface-2: #2c2c2e;
-    --ink: #f5f5f7;
-    --ink-2: #a1a1a6;
-    --ink-3: #8e8e93;
-    --line: #38383a;
-    --accent: #2997ff;
-
-    --critical: #ff6961;
-    --critical-bg: #3a1614;
-    --warning: #ffb340;
-    --warning-bg: #3a2a10;
-    --good: #30d158;
-    --good-bg: #0f2e18;
-    --idle: #bf5af2;
-
-    /* validated against #1c1c1e */
-    --day: #c98410;
-    --night: #7d7aff;
-    --bar: #2997ff;
-    --s1: #3987e5;
-    --s2: #d95926;
-    --s3: #199e70;
-    --s4: #c98500;
-    --s5: #d55181;
-    --s6: #0ca30c;
-
-    --b-cable: #0a84ff;
-    --b-inner: #40c8e0;
-    --b-laying: #5e5ce6;
-    --b-insul: #bf5af2;
-    --b-outer: #00c7be;
-    --b-output: #ff9f0a;
-    --b-men: #30d158;
-    --b-bobbin: #ff375f;
-    --b-work: #ac8e68;
-    --b-entries: #98989d;
-  }
 }
 
 @theme inline {
-  --color-bg: var(--bg);
+  --color-ground: var(--ground);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
-  --color-accent: var(--accent);
+  --color-line-2: var(--line-2);
+  --color-primary: var(--primary);
+  --color-primary-tint: var(--primary-tint);
+  --color-secondary: var(--secondary);
+  --color-secondary-tint: var(--secondary-tint);
+  --color-secondary-soft: var(--secondary-soft);
   --color-critical: var(--critical);
   --color-critical-bg: var(--critical-bg);
   --color-warning: var(--warning);
   --color-warning-bg: var(--warning-bg);
   --color-good: var(--good);
   --color-good-bg: var(--good-bg);
-  --color-idle: var(--idle);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+
+  /* Type roles: fixed rem scale, about 1.2 between steps. */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--font-weight: 500;
+  --text-caption--letter-spacing: 0.01em;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.25rem;
+  --text-label--font-weight: 400;
+  --text-label--letter-spacing: 0;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-body--font-weight: 400;
+  --text-body--letter-spacing: 0;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.625rem;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-page: 1.5rem;
+  --text-page--line-height: 1.875rem;
+  --text-page--font-weight: 600;
+  --text-page--letter-spacing: -0.015em;
+  --text-figure: 2.125rem;
+  --text-figure--line-height: 2.375rem;
+  --text-figure--font-weight: 600;
+  --text-figure--letter-spacing: -0.02em;
+  --text-headline: 3rem;
+  --text-headline--line-height: 3.25rem;
+  --text-headline--font-weight: 600;
+  --text-headline--letter-spacing: -0.025em;
 }
 
 html {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {
-  background: var(--bg);
+  background: var(--ground);
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  accent-color: var(--primary);
+  caret-color: var(--primary);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+::selection {
+  background: var(--primary-tint);
+  color: var(--ink);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
 /* Figures line up in tables and tiles. */
@@ -124,7 +117,7 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
   border-radius: 6px;
 }
