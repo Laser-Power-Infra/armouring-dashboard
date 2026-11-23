@@ -258,6 +258,8 @@ model CardIssue {
   rev         Int
   d0          DateTime  @db.Date // first day of the card
   loadedAt    DateTime  @default(now()) @map("loaded_at") @db.Timestamptz
+  s8PulledAt  String?   @map("s8_pulled_at") // issues built in the app: time of the SFG pull they were built from
+  notPlanned  String[]  @default([]) @map("not_planned") // orders / items the build could not plan, with the reason
 
   plan         CardPlan[]
   labour       CardLabour[]
@@ -382,4 +384,88 @@ model CardDrumStock {
 
   @@id([issueId, sizeKey])
   @@map("card_drum_stock")
+}
+
+// ── Card 1 sources (docs/final guide for card 1.md, section 3) ───────────
+// Replaced whole on every sync. The guide's Lot / Order / OrderLine are Kgp* here: Lot and OrderLine
+// already belong to the Armouring 5 dashboard. The guide's CardJob is CardPlan above.
+// No foreign keys between them: an order line may name an order Club & Run does not list.
+model SyncRun {
+  id         Int      @id @default(autoincrement())
+  source     String
+  tab        String
+  at         DateTime @default(now()) @db.Timestamptz
+  rows       Int
+  ok         Boolean
+  s8PulledAt String?  @map("s8_pulled_at")
+
+  @@map("sync_runs")
+}
+
+model KgpLot {
+  lotNo        String  @id @map("lot_no")
+  runOrder     Int     @map("run_order")
+  approvedByMd Boolean @map("approved_by_md")
+
+  @@map("kgp_lots")
+}
+
+model KgpOrder {
+  prodOrder     String  @id @map("prod_order")
+  mcNo          String? @map("mc_no")
+  party         String?
+  cable         String?
+  sizeSqmm      Float?  @map("size_sqmm")
+  cores         Float?
+  insulation    String?
+  lotNo         String? @map("lot_no")
+  runOrderInLot Int?    @map("run_order_in_lot")
+  supplyFrom    String? @map("supply_from")
+
+  @@map("kgp_orders")
+}
+
+model KgpOrderLine {
+  id        Int     @id @default(autoincrement())
+  prodOrder String  @map("prod_order")
+  fgType    String? @map("fg_type")
+  stage     String
+  sfgCode   String  @map("sfg_code")
+  sfgItem   String  @map("sfg_item")
+  netQty    Float   @map("net_qty")
+  doneQty   Float   @map("done_qty")
+  balance   Float
+  scope     String?
+  sfgBom    String? @map("sfg_bom")
+
+  @@unique([prodOrder, stage, sfgCode])
+  @@map("kgp_order_lines")
+}
+
+model BomLine {
+  id           Int    @id @default(autoincrement())
+  sfgBom       String @map("sfg_bom")
+  lineNo       Float  @map("line_no")
+  materialCode String @map("material_code")
+  material     String
+  kgPerKm      Float  @map("kg_per_km")
+
+  @@unique([sfgBom, lineNo])
+  @@map("bom_lines")
+}
+
+model RmStock {
+  itemCode       String @id @map("item_code")
+  item           String
+  qtyForPlanning Float  @map("qty_for_planning")
+
+  @@map("rm_stock")
+}
+
+model MachineMen {
+  machine      String  @id
+  menPerShift  Int?    @map("men_per_shift")
+  mustRunDaily Boolean @map("must_run_daily")
+
+  @@map("machine_men")
 }

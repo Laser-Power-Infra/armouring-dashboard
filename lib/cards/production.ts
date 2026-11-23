@@ -1,6 +1,6 @@
-// Card 1, KGP Machine Production Cards: figures from the Card plan rows (build spec 4).
+// Card 1, KGP Machine Production Cards: what is printed, from the Card plan rows (docs/final guide for card 1.md, section 5).
 import { addDays, dMon, span, weeks, type CalCell } from "./calendar.ts";
-import { BOTTLENECK, EXT51_COULD_TAKE, MACHINE_ORDER, MACHINES, RUNS_WITH, type MachineInfo, type MachineName } from "./machines.ts";
+import { BOTTLENECK, MACHINE_ORDER, MACHINES, RUNS_WITH, type MachineInfo, type MachineName } from "./machines.ts";
 import type { Day, PlanRow } from "./sheet.ts";
 
 export const WIN = 15;
@@ -17,13 +17,12 @@ export type JobRow = {
   job: string;
   /** Part of the job text that needs attention, e.g. "strip change". */
   jobAttention: string | null;
-  ext51: boolean;
   core: string;
   lot: string;
   qty: string;
   material: string;
   feed: string;
-  /** Drum requirement of a Skip 10 line, printed in the attention colour. */
+  /** Drum requirement of a line with status "drum", printed in the attention colour. */
   drums: string | null;
   status: PlanRow["feedStatus"];
 };
@@ -41,7 +40,32 @@ export type MachineCard = {
   calendar: ProdCell[][];
   hasDot: boolean;
   jobs: JobRow[];
+  /** Raw material to issue to this machine, date by date. */
+  rm: Materials;
 };
+
+/** kg of each material per date, with a total per material. */
+export type Materials = { names: string[]; days: { date: string; kg: number[] }[]; total: number[] };
+
+/** "LT XLPE 1,234 kg · PP FILLER 20 kg" as written on a plan row. */
+const parseMaterial = (text: string) =>
+  text.split(" · ").flatMap((part) => {
+    const m = /^(.*) ([\d,]+) kg$/.exec(part);
+    return m ? [{ name: m[1], kg: Number(m[2].replace(/,/g, "")) }] : [];
+  });
+
+function materials(lines: PlanRow[]): Materials {
+  const names = [...new Set(lines.flatMap((r) => parseMaterial(r.material).map((p) => p.name)))];
+  const days = [...Map.groupBy(lines, (r) => r.day)]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, rows]) => {
+      const kg = names.map(() => 0);
+      for (const r of rows) for (const p of parseMaterial(r.material)) kg[names.indexOf(p.name)] += p.kg;
+      return { date: dMon(day), kg };
+    })
+    .filter((d) => d.kg.some((k) => k > 0));
+  return { names, days, total: names.map((_, i) => days.reduce((s, d) => s + d.kg[i], 0)) };
+}
 
 const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const DASH = "–";
@@ -78,16 +102,14 @@ export function productionCards(rows: PlanRow[]) {
     lines.forEach((r, i) => {
       if (r.qty > 0 && (/change/i.test(r.job) || (i > 0 && kind(r.job) !== kind(lines[i - 1].job)))) dots.add(r.day);
     });
-    const waiting = new Set(lines.filter((r) => r.feedStatus === "wait").map((r) => r.day));
 
     const calendar = cal.map((week) =>
       week.map((c): ProdCell => {
         if (c.index === null) return { ...c, tone: "out" };
-        if (!workingDays.has(c.day)) return { ...c, tone: "idle", small: waiting.has(c.day) ? "waiting for drums" : "off" };
-        // Summed in hundredths (the tab holds two decimals) so the total is exact. A total exactly halfway, such as 3.95,
-        // goes down to 3.9: that is how every such day is printed on the issued cards.
+        if (!workingDays.has(c.day)) return { ...c, tone: "idle", small: "off" };
+        // Summed in hundredths (the rows hold two decimals) so the total is exact.
         const hundredths = lines.filter((r) => r.day === c.day).reduce((s, r) => s + Math.round(r.qty * 100), 0);
-        return { ...c, tone: "work", big: follows ? "runs" : (Math.floor((hundredths + 4) / 10) / 10).toFixed(1), dot: dots.has(c.day) };
+        return { ...c, tone: "work", big: follows ? "runs" : (Math.round(hundredths / 10) / 10).toFixed(1), dot: dots.has(c.day) };
       }),
     );
 
@@ -95,7 +117,6 @@ export function productionCards(rows: PlanRow[]) {
       const [jobMain, ...jobRest] = r.job.split(" – ");
       const jobTail = jobRest.join(" – ");
       const attention = /change/i.test(jobTail) ? jobTail : null;
-      const [feedMain, drums] = r.feedStatus === "drum" ? r.feed.split(/\s*·\s*DRUMS:\s*/) : [r.feed];
       return {
         first: i === 0 || lines[i - 1].day !== r.day,
         date: dMon(r.day),
@@ -104,18 +125,18 @@ export function productionCards(rows: PlanRow[]) {
         partyCable: r.partyCable,
         job: attention ? jobMain : r.job,
         jobAttention: attention,
-        ext51: name === BOTTLENECK && EXT51_COULD_TAKE.includes(r.prodOrder.slice(-3)),
         core: r.sizeCore || DASH,
         lot: r.lot,
         qty: r.qty > 0 ? `${r.qty.toFixed(2)} ${r.unit}` : DASH,
         material: r.material || DASH,
-        feed: upperFirst(feedMain.replace(/^WAITING FOR DRUMS/, "Waiting for drums")),
-        drums: drums ? `Drums: ${drums}` : null,
+        feed: upperFirst(r.feed),
+        // ACSR Raccoon is wound on finished drums of 2.5 km.
+        drums: r.feedStatus === "drum" ? `Drums: needs ${Math.ceil(r.qty / 2.5)} drums of 48×20×28×2.25 RDSO – run only if assembled the day before` : null,
         status: r.feedStatus,
       };
     });
 
-    return { name, info: MACHINES[name], workingDays, planned, units, load: loadOf(name, workingDays.size), calendar, hasDot: dots.size > 0, jobs };
+    return { name, info: MACHINES[name], workingDays, planned, units, load: loadOf(name, workingDays.size), calendar, hasDot: dots.size > 0, jobs, rm: materials(lines) };
   });
 
   const jobLines = plan.filter((r) => r.qty > 0);
@@ -131,5 +152,8 @@ export function productionCards(rows: PlanRow[]) {
       needDrums,
     },
     machines,
+    /** Page 2: every material of every machine, and which machines take it. */
+    rm: materials(plan),
+    takers: (name: string) => machines.flatMap((m) => (m.rm.names.includes(name) ? [`${m.name} (${m.rm.total[m.rm.names.indexOf(name)].toLocaleString("en-US")} kg)`] : [])).join(" · "),
   };
 }

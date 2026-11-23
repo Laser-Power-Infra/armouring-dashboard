@@ -1,6 +1,8 @@
 "use client";
 
+import { startTransition, useActionState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { regenerateCard1 } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 
@@ -18,6 +20,23 @@ export function IssuePicker({ current, issues }: { current: number; issues: { id
         </option>
       ))}
     </Select>
+  );
+}
+
+/** Syncs the source sheets and stores a new revision of today's Card 1; the reason shows here when it cannot. */
+export function RegenerateButton() {
+  const [error, run, pending] = useActionState(regenerateCard1, null);
+  return (
+    <>
+      {error && !pending && (
+        <span role="alert" className="max-w-md whitespace-pre-line text-caption text-critical">
+          {error}
+        </span>
+      )}
+      <Button loading={pending} onClick={() => startTransition(run)}>
+        {pending ? "Regenerating…" : "Regenerate"}
+      </Button>
+    </>
   );
 }
 

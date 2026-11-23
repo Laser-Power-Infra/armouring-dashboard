@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { getLabour, versionLabel } from "@/lib/cards/data";
 import { labourCard, type ShiftCell } from "@/lib/cards/labour";
-import { Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
 
 // Card 2, KGP Labour Allocation Card (build spec 6): what needs action, then one page per date.
 export const instant = false;
@@ -48,7 +48,7 @@ export default async function LabourCardPage({ searchParams }: PageProps<"/cards
           }
         />
         <How><b>How to read this card:</b> this page shows only what needs action. After it there is one page for each date, showing who is on which machine. Words in <Sec>this colour</Sec> need attention.</How>
-        <h3>Needs action</h3>
+        <ActionHead title="Needs action" cardFor="Devika" />
         {card.needsAction.length ? (
           <table className="t">
             <Cols widths={[9, 7, 14, 45, 25]} />

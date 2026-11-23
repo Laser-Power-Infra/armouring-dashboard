@@ -5,7 +5,7 @@ import { ddMonYy } from "@/lib/cards/calendar";
 import type { CalCell } from "@/lib/cards/calendar";
 import { getIssues, issueName, type Issue } from "@/lib/cards/data";
 import { MainNav } from "@/components/dash/main-nav";
-import { IssuePicker, PrintButton } from "./_controls";
+import { IssuePicker, PrintButton, RegenerateButton } from "./_controls";
 
 export const CARD_TABS = [
   { href: "/cards/production", label: "Production" },
@@ -42,6 +42,7 @@ export function CardShell({ active, picked, variant = "", children }: { active: 
           <MainNav active={active} query={query} />
           <div className="ml-auto flex items-center gap-2">
             {picked && <IssuePicker current={picked.issue.id} issues={picked.issues.map((i) => ({ id: i.id, name: issueName(i) }))} />}
+            {active === "/cards/production" && <RegenerateButton />}
             {picked && <PrintButton />}
           </div>
         </div>
@@ -138,6 +139,13 @@ export function Calendar<T extends CalCell>({ title, weeks, cell }: { title: str
 }
 
 export const Swatch = ({ tone, children }: { tone: string; children?: ReactNode }) => <span className={`sw ${tone}`}>{children}</span>;
+
+/** A highlighted heading for the part of a card someone must act on, with whose card it is. */
+export const ActionHead = ({ title, cardFor }: { title: string; cardFor: string }) => (
+  <h3 className="act">
+    {title} · Card for {cardFor}
+  </h3>
+);
 
 export const How = ({ children }: { children: ReactNode }) => <div className="how">{children}</div>;
 

@@ -3,7 +3,7 @@ import type { PrismaClient } from "../generated/prisma/client.ts";
 import { ddMonYy } from "./calendar.ts";
 import type { Day, DrumAssemblyRow, DrumNeedRow, DrumStockRow, LabourRow, PlanRow, SpareRow } from "./sheet.ts";
 
-export type Issue = { id: number; version: string; issueDate: Day; rev: number; d0: Day; loadedAt: Date };
+export type Issue = { id: number; version: string; issueDate: Day; rev: number; d0: Day; loadedAt: Date; /** Set on issues built in the app. */ s8PulledAt: string | null; notPlanned: string[] };
 
 type Db = Pick<PrismaClient, "cardIssue" | "cardPlan" | "cardLabour" | "cardSpareMen" | "cardDrumNeed" | "cardDrumAssembly" | "cardDrumStock">;
 const day = (d: Date): Day => d.toISOString().slice(0, 10);
@@ -17,7 +17,7 @@ export const versionLabel = (i: Pick<Issue, "issueDate" | "rev">) => `VERSION ${
 /** Every stored issue, newest first. */
 export async function getIssues(db: Db): Promise<Issue[]> {
   const rows = await db.cardIssue.findMany({ orderBy: [{ issueDate: "desc" }, { rev: "desc" }] });
-  return rows.map((r) => ({ id: r.id, version: r.version, issueDate: day(r.issueDate), rev: r.rev, d0: day(r.d0), loadedAt: r.loadedAt }));
+  return rows.map((r) => ({ id: r.id, version: r.version, issueDate: day(r.issueDate), rev: r.rev, d0: day(r.d0), loadedAt: r.loadedAt, s8PulledAt: r.s8PulledAt, notPlanned: r.notPlanned }));
 }
 
 export async function getCardPlan(db: Db, issueId: number): Promise<PlanRow[]> {
@@ -43,5 +43,21 @@ export async function getDrums(db: Db, issueId: number): Promise<{ need: DrumNee
     need: need.map((r) => ({ ...r, version: "", usedOn: day(r.usedOn), readyBy: day(r.readyBy) })),
     assembly: assembly.map((r) => ({ ...r, version: "", assembleBy: day(r.assembleBy), was: r.was ? day(r.was) : null, usedOn: day(r.usedOn) })),
     stock,
+  };
+}
+
+/** What Card 1 prints beside the plan: men per shift (S4), planning stock by material name (S3, through the BOM's codes), approved lots. */
+export async function getCard1Sources(db: Pick<PrismaClient, "machineMen" | "rmStock" | "bomLine" | "kgpLot">) {
+  const [men, rm, bom, approvedLots] = await Promise.all([
+    db.machineMen.findMany(),
+    db.rmStock.findMany(),
+    db.bomLine.findMany({ distinct: ["material"], select: { material: true, materialCode: true } }),
+    db.kgpLot.count({ where: { approvedByMd: true } }),
+  ]);
+  const qty = new Map(rm.map((r) => [r.itemCode, r.qtyForPlanning]));
+  return {
+    men: new Map(men.map((m) => [m.machine, m.menPerShift])),
+    stock: new Map(bom.flatMap((b) => (qty.has(b.materialCode) ? [[b.material, qty.get(b.materialCode)!] as const] : []))),
+    approvedLots,
   };
 }

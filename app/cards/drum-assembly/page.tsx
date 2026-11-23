@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { getDrums, versionLabel } from "@/lib/cards/data";
 import { drumAssemblyCard } from "@/lib/cards/drums";
-import { Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
 
 // Card 4, KGP Drum Assembly Card (build spec 9): what cannot be made yet, then which drums to make day by day.
 export const instant = false;
@@ -52,7 +52,7 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
         <How><b>How to read this card:</b> this page shows the totals and what is held up. The next pages list, day by day, which drums to make. “Make by” is the date the drum must be ready. Words in <Sec>this colour</Sec> need attention.</How>
         {card.cannot.length > 0 && (
           <>
-            <h3>Cannot be made yet</h3>
+            <ActionHead title="Cannot be made yet" cardFor="Srikant Rao" />
             <table className="t">
               <Cols widths={[22, 10, 34, 34]} />
               <thead>

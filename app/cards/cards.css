@@ -6,14 +6,13 @@
   margin: 9mm 9mm 12mm;
 }
 
-/* Screen: each printed page is a white sheet as wide as A4 landscape inside its margins. */
+/* Screen: each printed page is a white sheet as wide as the window. Paper keeps A4 landscape (see @media print). */
 .kgp-stage {
   overflow-x: auto;
   padding: 16px;
 }
 .kgp-sheet {
-  width: 279mm;
-  margin: 0 auto 16px;
+  margin: 0 0 16px;
   padding: 9mm;
   box-sizing: content-box;
   background: #fff;
@@ -85,6 +84,7 @@
   td.c { text-align: center; white-space: nowrap; font-weight: bold; color: #1c3a6b; }
   td.badc { background: #c2410c; color: #fff; }
   td.nr { color: #666; background: #f3f5f8; text-align: center; }
+  h3.act { font-size: 12pt; background: #fde047; padding: 3px 8px; }
   .how { border: 1px solid #1c3a6b; background: #dfe7f3; padding: 4px 8px; margin: 6px 0; font-size: 8pt; }
 }
 
@@ -106,5 +106,5 @@
   .kgp-sheet { width: auto; margin: 0; padding: 0; border: 0; }
   .kgp-sheet + .kgp-sheet, .kgp-card h3.pb { break-before: page; }
   .kgp-card h3.pb { margin-top: 0; }
-  .kgp-card td, .kgp-card th, .kgp-card .sw, .kgp-card .how { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .kgp-card td, .kgp-card th, .kgp-card .sw, .kgp-card .how, .kgp-card h3.act { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }

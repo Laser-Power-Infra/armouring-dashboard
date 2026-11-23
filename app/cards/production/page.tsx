@@ -1,21 +1,58 @@
 import { connection } from "next/server";
 import { db } from "@/lib/db";
-import { getCardPlan, versionLabel } from "@/lib/cards/data";
+import { getCard1Sources, getCardPlan, versionLabel } from "@/lib/cards/data";
 import { MACHINE_ORDER, RUNS_WITH } from "@/lib/cards/machines";
-import { productionCards, WIN, type MachineCard } from "@/lib/cards/production";
-import { Calendar, CardShell, Cols, How, loadedText, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { productionCards, WIN, type MachineCard, type Materials } from "@/lib/cards/production";
+import { ActionHead, Calendar, CardShell, Cols, How, loadedText, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
 
-// Card 1, KGP Machine Production Cards (build spec 4): a cover page, then one page per machine.
+// Card 1, KGP Machine Production Cards (docs/final guide for card 1.md, section 5):
+// a cover page, the raw material issue plan, then one page per machine.
 export const instant = false;
 
 const DOT = "●";
+const kg = (n: number) => (n > 0 ? n.toLocaleString("en-US") : "");
+const TO_CONFIRM = <Sec>⚠ to confirm</Sec>;
+
+/** Dates down, materials across, with a Total row. */
+function MaterialsByDate({ rm }: { rm: Materials }) {
+  return (
+    <table className="t">
+      <thead>
+        <tr>
+          <th>Date</th>
+          {rm.names.map((n) => (
+            <th key={n} className="num">{n} (kg)</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rm.days.map((d) => (
+          <tr key={d.date}>
+            <td className="dt">{d.date}</td>
+            {d.kg.map((k, i) => (
+              <td key={i} className="num">{kg(k)}</td>
+            ))}
+          </tr>
+        ))}
+        <tr className="dstart">
+          <td><b>Total</b></td>
+          {rm.total.map((k, i) => (
+            <td key={i} className="num"><b>{kg(k)}</b></td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
 
 export default async function ProductionCardsPage({ searchParams }: PageProps<"/cards/production">) {
   await connection();
   const picked = await pickIssue(searchParams);
   if (!picked) return <CardShell active="/cards/production" picked={null} />;
   const { issue } = picked;
-  const card = productionCards(await getCardPlan(db, issue.id));
+  const [plan, src] = await Promise.all([getCardPlan(db, issue.id), getCard1Sources(db)]);
+  const card = productionCards(plan);
+  const men = (name: string) => src.men.get(name) ?? null;
   const version = versionLabel(issue);
 
   return (
@@ -27,12 +64,25 @@ export default async function ProductionCardsPage({ searchParams }: PageProps<"/
           title="KGP Machine Production Cards"
           facts={[
             ["Card period", card.period],
-            ["Data", `Sheet version “${issue.version}”, loaded ${loadedText(issue)}`],
+            ["Data", issue.s8PulledAt ? `Balances: SFG dashboard ${issue.s8PulledAt}; lots: Club & Run (${src.approvedLots} approved lots)` : `Sheet version “${issue.version}”, loaded ${loadedText(issue)}`],
             ["Machines", `${MACHINE_ORDER.length}, one card each, in process order`],
             ["Job lines checked", <b key="v">{card.cover.jobLines}</b>],
             ["Feed ready a day ahead or in stock", <b key="v">{card.cover.feedReady}</b>],
             ["Feed missing", card.cover.feedMissing ? <b key="v" className="sec">{card.cover.feedMissing}</b> : <b key="v">0</b>],
             ["Need drums from the yard", card.cover.needDrums ? <span key="v"><b className="sec">{card.cover.needDrums}</b> ACSR Raccoon lines on Skip 10</span> : <b key="v">0</b>],
+            [
+              "Not planned – to confirm",
+              issue.notPlanned.length ? (
+                <span key="v" className="sec">
+                  <b>{issue.notPlanned.length}</b>
+                  {issue.notPlanned.map((n) => (
+                    <div key={n}>{n}</div>
+                  ))}
+                </span>
+              ) : (
+                <b key="v">0</b>
+              ),
+            ],
             ["Men on each machine", "See the Labour Allocation Card"],
           ]}
           right={
@@ -47,7 +97,7 @@ export default async function ProductionCardsPage({ searchParams }: PageProps<"/
             </>
           }
         />
-        <h3>All machines at a glance</h3>
+        <ActionHead title="All machines at a glance" cardFor="Devika, Mukesh, Kamlesh" />
         <table className="t">
           <Cols widths={[18, 16, 14, 24, 16, 12]} />
           <thead>
@@ -68,20 +118,84 @@ export default async function ProductionCardsPage({ searchParams }: PageProps<"/
                 <td className="num">{m.workingDays.size} of {WIN}</td>
                 <td className="num">{m.planned}</td>
                 <td className={m.load.attention ? "sec" : undefined}>{m.load.short}</td>
-                <td className="num">{m.info.menPerShift || "–"}</td>
+                <td className="num">{men(m.name) ?? TO_CONFIRM}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Sheet>
+      <Sheet>
+        <Top
+          version={version}
+          group="KGP Machine Production Cards"
+          title="Raw material issue plan"
+          facts={[
+            ["Card period", card.period],
+            ["Quantity", "Planned km × ERP BOM kg per km; issue on the morning of the date"],
+            ["Stock check", <span key="v">Stock = “Qty used for planning” of the RM opening stock sheet. <Sec>Words in this colour</Sec> = the plan needs more than the stock</span>],
+          ]}
+          right={null}
+        />
+        {/* Materials run down, not across: the plan uses about 30 of them and the page is 15 dates wide. */}
+        <h3>Material to issue, date by date (kg, all machines)</h3>
+        <table className="t">
+          <Cols widths={[20, ...card.rm.days.map(() => 64 / card.rm.days.length), 8, 8]} />
+          <thead>
+            <tr>
+              <th>Material</th>
+              {card.rm.days.map((d) => (
+                <th key={d.date} className="num">{d.date}</th>
+              ))}
+              <th className="num">Total</th>
+              <th className="num">Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {card.rm.names.map((name, i) => {
+              const stock = src.stock.get(name);
+              const short = stock !== undefined && card.rm.total[i] > stock;
+              return (
+                <tr key={name}>
+                  <td>{name}</td>
+                  {card.rm.days.map((d) => (
+                    <td key={d.date} className="num">{kg(d.kg[i])}</td>
+                  ))}
+                  <td className={short ? "num sec" : "num"}><b>{kg(card.rm.total[i])}</b></td>
+                  <td className={short ? "num sec" : "num"}>{stock === undefined ? TO_CONFIRM : stock.toLocaleString("en-US")}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <h3>Which machine takes each material</h3>
+        <table className="t">
+          <Cols widths={[24, 64, 12]} />
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Machine (kg)</th>
+              <th className="num">Total (kg)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {card.rm.names.map((name, i) => (
+              <tr key={name}>
+                <td>{name}</td>
+                <td>{card.takers(name)}</td>
+                <td className="num">{kg(card.rm.total[i])}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </Sheet>
       {card.machines.map((m) => (
-        <MachinePage key={m.name} m={m} version={version} period={card.period} />
+        <MachinePage key={m.name} m={m} version={version} period={card.period} men={men(m.name)} />
       ))}
     </CardShell>
   );
 }
 
-function MachinePage({ m, version, period }: { m: MachineCard; version: string; period: string }) {
+function MachinePage({ m, version, period, men }: { m: MachineCard; version: string; period: string; men: number | null }) {
   const days = m.workingDays.size;
   const follows = !!RUNS_WITH[m.name];
   return (
@@ -96,7 +210,7 @@ function MachinePage({ m, version, period }: { m: MachineCard; version: string; 
           ["Runs", m.info.runs],
           !!m.info.speed && (["Daily speed / limit", m.info.speed] as const),
           !!m.info.feedFrom && (["Feed comes from", m.info.feedFrom] as const),
-          ["Men needed", m.info.menPerShift ? `${m.info.menPerShift} in each shift · names are on the Labour Allocation Card` : "None in this period"],
+          ["Men needed", men === null ? TO_CONFIRM : `${men} in each shift · names are on the Labour Allocation Card`],
           ["Card period", period],
           ["Planned in this period", m.units.length ? <span key="v"><b>{m.planned}</b> on <b>{days}</b> of {WIN} days</span> : <span key="v"><b>{days}</b> of {WIN} days</span>],
           ["Load", m.load.attention ? <span key="v"><Sec>{m.load.text}</Sec>{m.load.tail}</span> : m.load.text],
@@ -149,7 +263,6 @@ function MachinePage({ m, version, period }: { m: MachineCard; version: string; 
                     <div className="sm">
                       {j.job}
                       {j.jobAttention && <> – <Sec>{j.jobAttention}</Sec></>}
-                      {j.ext51 && <> · <Sec>Extruder 51 could take this – plant to decide</Sec></>}
                     </div>
                   </td>
                   <td>{j.core}</td>
@@ -157,7 +270,7 @@ function MachinePage({ m, version, period }: { m: MachineCard; version: string; 
                   <td className="num">{j.qty}</td>
                   <td>{j.material}</td>
                   <td>
-                    {j.status === "wait" ? <Sec>{j.feed}</Sec> : j.feed}
+                    {j.feed}
                     {j.drums && <div className="sec">{j.drums}</div>}
                   </td>
                 </tr>
@@ -166,7 +279,13 @@ function MachinePage({ m, version, period }: { m: MachineCard; version: string; 
           </table>
         </>
       )}
-      {follows && days > 0 && <How>This machine has no order-wise job list. It runs on the {days} green days to supply wire to the machines named above.</How>}
+      {follows && <How>This machine has no order-wise job list. It runs on the {days} green days to supply wire to the machines named above.</How>}
+      {m.rm.names.length > 0 && (
+        <>
+          <h3>Raw material to issue to this machine, date by date</h3>
+          <MaterialsByDate rm={m.rm} />
+        </>
+      )}
     </Sheet>
   );
 }

@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { getDrums, versionLabel } from "@/lib/cards/data";
 import { drumRequirementCard } from "@/lib/cards/drums";
-import { Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
 
 // Card 3, KGP Finished Goods Drum Requirement Card (build spec 8): what needs action, size-wise totals, then date by date.
 export const instant = false;
@@ -51,7 +51,7 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
         <How><b>How to read this card:</b> this page shows what needs action and the totals for each drum size. The next pages list, date by date, which drums must be ready. Drums in stock are used first. Words in <Sec>this colour</Sec> need attention.</How>
         {card.needsAction.length > 0 && (
           <>
-            <h3>Needs action</h3>
+            <ActionHead title="Needs action" cardFor="Srikant Rao" />
             <table className="t">
               <Cols widths={[19, 53, 28]} />
               <thead>

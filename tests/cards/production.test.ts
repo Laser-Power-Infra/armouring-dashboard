@@ -4,7 +4,7 @@ import { productionCards, type MachineCard } from "../../lib/cards/production";
 import { parseCardPlan } from "../../lib/cards/sheet";
 import { fixture } from "./testdb";
 
-// Expected figures are those printed on templates/Machine_Production_Cards_New_Layout.html, made from the same plan.
+// The rows are the 17-Nov plan as issued; the rules are those of docs/final guide for card 1.md, section 5.
 const dayCells = (m: MachineCard) => m.calendar.flat().filter((c) => c.index !== null).map((c) => [c.label, c.big ?? c.small, !!c.dot]);
 
 describe("machine production cards", () => {
@@ -38,23 +38,23 @@ describe("machine production cards", () => {
       "MS-14": [4, "40.0 core km", "Normal"],
       "MS-11": [7, "58.6 core km", "Normal"],
       "MS-18": [7, "98.7 km", "Normal"],
-      "Laying 5": [15, "69.7 km", "Normal"],
+      "Laying 5": [15, "69.7 km", "Slowest step"],
       "Armouring 5": [15, "53.8 km", "Normal"],
       "Extruder 22": [14, "179.1 core km", "Normal"],
       "Extruder 35": [9, "67.8 core km", "Normal"],
       "Extruder 51": [0, "–", "No work"],
-      "Extruder 52": [15, "128.6 km", "Slowest step"],
+      "Extruder 52": [15, "128.6 km", "Normal"],
       "Sioplas 4": [15, "88.2 core km + 84.6 km", "Normal"],
     });
     expect(machine("Skip (12+7)-1").load).toMatchObject({ text: "Low – works only 3 of 15 days", attention: true });
   });
 
-  // 28 Nov: 2.66 + 0.58 + 0.71 = 3.95 is printed as 3.9 on the issued card, like the four other halfway days of this plan.
+  // 28 Nov: 2.66 + 0.58 + 0.71 = 3.95, printed to one decimal as 4.0.
   it("colours the Armouring 5 calendar and marks strip changes", () => {
     expect(dayCells(machine("Armouring 5"))).toEqual([
       ["17", "1.0", false], ["18", "5.0", false], ["19", "4.0", true], ["20", "1.3", false], ["21", "2.0", false], ["22", "7.8", true],
-      ["23", "7.0", false], ["24", "5.9", false], ["25", "2.0", false], ["26", "1.0", false], ["27", "4.1", true], ["28", "3.9", true], ["29", "5.1", true],
-      ["30", "3.6", false], ["1 Dec", "0.1", false],
+      ["23", "7.0", false], ["24", "5.9", false], ["25", "2.0", false], ["26", "1.0", false], ["27", "4.1", true], ["28", "4.0", true], ["29", "5.1", true],
+      ["30", "3.7", false], ["1 Dec", "0.1", false],
     ]);
   });
 
@@ -70,17 +70,19 @@ describe("machine production cards", () => {
     expect(arm[4]).toMatchObject({ first: false, date: "20 Nov", order: "P726Y-00208" });
   });
 
-  it("flags drum lines, waiting lines and jobs Extruder 51 could take", () => {
+  it("asks for drums on a line with status drum: one drum per 2.5 km", () => {
     const drum = machine("Skip 10").jobs.find((j) => j.status === "drum")!;
-    expect(drum).toMatchObject({ date: "20 Nov", feed: "Aluminium rod drawn on WD17", drums: "Drums: needs 10 drums of 48×20×28×2.25 RDSO from the yard that day – run only if assembled the day before" });
-    const wait = machine("Skip 8").jobs.find((j) => j.status === "wait")!;
-    expect(wait).toMatchObject({ qty: "–", material: "–", job: "ACSR Raccoon – waiting for drums", jobAttention: null });
-    expect(wait.feed).toMatch(/^Waiting for drums – run Raccoon here only when/);
-    // 28 Nov has other work on Skip 8, so it is a working day. A day with only the waiting line says so.
-    expect(dayCells(machine("Skip 8")).find(([label]) => label === "28")).toEqual(["28", "5.9", false]);
-    const onlyWaiting = productionCards(parseCardPlan(fixture("card-plan")).filter((r) => r.machine !== "Skip 8" || r.feedStatus === "wait" || r.day !== "2026-11-28"));
-    expect(dayCells(onlyWaiting.machines.find((m) => m.name === "Skip 8")!).find(([label]) => label === "28")).toEqual(["28", "waiting for drums", false]);
-    expect(machine("Extruder 52").jobs[0]).toMatchObject({ order: "P726Y-00265", ext51: true, core: "INNER sheath" });
-    expect(machine("Extruder 52").jobs[1]).toMatchObject({ order: "P726Y-00267", ext51: false });
+    expect(drum).toMatchObject({ date: "20 Nov", qty: "23.00 km", drums: "Drums: needs 10 drums of 48×20×28×2.25 RDSO – run only if assembled the day before" });
+    expect(machine("Skip 10").jobs.find((j) => j.status === "ok")!.drums).toBeNull();
+  });
+
+  it("totals the raw material per machine and for all machines", () => {
+    const skip = machine("Skip (12+7)-1").rm;
+    expect(skip.names).toEqual(["Aluminium rod"]);
+    expect(skip.days[0]).toEqual({ date: "18 Nov", kg: [2568] });
+    expect(skip.total[0]).toBe(skip.days.reduce((s, d) => s + d.kg[0], 0));
+    const i = c.rm.names.indexOf("Aluminium rod");
+    expect(c.rm.total[i]).toBe(c.machines.reduce((s, m) => s + (m.rm.total[m.rm.names.indexOf("Aluminium rod")] ?? 0), 0));
+    expect(c.takers("Aluminium rod")).toMatch(/^Skip \(12\+7\)-1 \([\d,]+ kg\) · /);
   });
 });

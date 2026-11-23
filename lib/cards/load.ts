@@ -1,6 +1,9 @@
 // Stores one card issue from the data sheet. Every issue is kept; loading a version again replaces only that issue.
 import type { PrismaClient } from "../generated/prisma/client.ts";
 import { batchGet } from "../sheets/client.ts";
+import { ddMonYy } from "./calendar.ts";
+import { planCard1 } from "./plan.ts";
+import { parseSources, pullCheck, readSources, storeSources, type Grids } from "./sources.ts";
 import { parseCardPlan, parseDrumAssembly, parseDrumNeed, parseDrumStock, parseLabour, parseSpareMen, parseVersion } from "./sheet.ts";
 
 export type CardTabs = Record<"plan" | "labour" | "spare" | "need" | "assembly" | "stock", unknown[][]>;
@@ -81,6 +84,36 @@ export async function loadCards(db: PrismaClient, tabs: CardTabs) {
         rev,
         rows: { card_plan: plan.length, card_labour: labour.length, card_spare_men: spare.length, card_drum_need: need.length, card_drum_assembly: assembly.length, card_drum_stock: stock.length },
       };
+    },
+    { timeout: 60_000 },
+  );
+}
+
+/**
+ * Card 1 built in the app (docs/final guide for card 1.md): sync the sheets, then plan and store a new issue.
+ * Day 0 is today in plant time. Every build is a new revision of today's issue.
+ */
+export async function buildCard1(db: PrismaClient, now = new Date(), read: () => Promise<Grids> = readSources) {
+  const grids = await read().catch(async (e) => {
+    await db.syncRun.create({ data: { source: "S1 S3 S4 S8", tab: "*", rows: 0, ok: false } });
+    throw e;
+  });
+  const tables = parseSources(grids);
+  const pull = pullCheck(grids.readme, now);
+  await storeSources(db, tables, pull.pulledAt);
+  if (pull.problem) throw new Error(`Card 1 not built: ${pull.problem}`);
+
+  const d0 = new Date(now.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+  const { rows, notPlanned } = planCard1(tables, d0);
+  if (!rows.length) throw new Error("Card 1 not built: the plan has no job lines");
+  return db.$transaction(
+    async (tx) => {
+      const last = await tx.cardIssue.aggregate({ where: { issueDate: date(d0) }, _max: { rev: true } });
+      const rev = (last._max.rev ?? 0) + 1;
+      const version = `${ddMonYy(d0)} / Rev ${rev}`;
+      const issue = await tx.cardIssue.create({ data: { version, issueDate: date(d0), rev, d0: date(d0), s8PulledAt: pull.pulledAt, notPlanned } });
+      await tx.cardPlan.createMany({ data: rows.map((r) => ({ ...r, version: undefined, issueId: issue.id, day: date(r.day) })) });
+      return { issueId: issue.id, version, d0, jobLines: rows.length, notPlanned };
     },
     { timeout: 60_000 },
   );
