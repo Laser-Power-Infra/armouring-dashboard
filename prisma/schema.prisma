@@ -469,3 +469,18 @@ model MachineMen {
 
   @@map("machine_men")
 }
+
+model MdRules {
+  id        Int      @id @default(autoincrement())
+  topic     String
+  rule      String // MD sir's wording, as given
+  summary   String? // written by the agent(reframed)
+  givenOn   DateTime @map("given_on") @db.Date
+  newRuleId Int?     @map("new_rule_id") // set on an old rule: the rule that replaced it
+  newRule   MdRules?  @relation("OldToNew", fields: [newRuleId], references: [id])
+  oldRules  MdRules[] @relation("OldToNew") // the rules this one replaced
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([topic])
+  @@map("md_rules")
+}
