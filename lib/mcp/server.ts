@@ -33,7 +33,8 @@ const INSTRUCTIONS =
   "Decide from `rule`, which is the MD's own wording, and from `details`, which holds its exact condition and what to do when it fails. " +
   "list_rules also returns `rulesets`, whose `how_to_read` explains how to read `details`. `summary` is only a short note for finding a rule. " +
   "A rule is never edited in place: update_rule stores the new wording and keeps the old one as replaced; delete_rule only marks a rule deleted. " +
-  "The synced data (Club & Run, SFG, stock, cards) is read only: list_data names the tables and their columns, read_data reads rows.";
+  "The synced data (Club & Run, SFG, stock, cards) is read through list_data and read_data. " +
+  "Only Club & Run planning fields can be changed (update_club_lot, update_club_order), and only in our copy: the next sync from the sheet overwrites them.";
 
 class ToolError extends Error {}
 
@@ -146,6 +147,44 @@ export const TOOLS = {
       const { count } = await db.mdRules.updateMany({ where: { id: a.id }, data: { summary: a.summary } });
       if (count !== 1) throw new ToolError(`No rule with id ${a.id}.`);
       return { id: a.id, summary: a.summary };
+    },
+  ),
+  // Club & Run planning fields, written to our tables only. Balances and calculated columns (CR-C-16) are not writable.
+  update_club_lot: tool(
+    "Change planning fields of one Club & Run lot in our database. Our copy only: the next sync from the Club & Run sheet overwrites it. " +
+      "Run order and Approved by MD are the MD's decision (rules CR-C-12, CR-C-13, CR-E-34): change them only on his word.",
+    z.strictObject({
+      lot_no: z.string().trim().min(1).max(40).describe("The lot to change, e.g. PL-001"),
+      run_order: z.int().min(1).optional().describe("Run order, 1 = first"),
+      approved_by_md: z.boolean().optional(),
+      sent_to_plant: z.boolean().optional(),
+      status: z.string().trim().max(100).nullable().optional(),
+      remarks: z.string().trim().max(2000).nullable().optional(),
+      what_clubbed: z.string().trim().max(2000).nullable().optional().describe("What is clubbed in the lot"),
+    }),
+    async ({ lot_no, run_order, approved_by_md, sent_to_plant, status, remarks, what_clubbed }, db) => {
+      const data = { runOrder: run_order, approvedByMd: approved_by_md, sentToPlant: sent_to_plant, status, remarks, whatClubbed: what_clubbed };
+      if (Object.values(data).every((v) => v === undefined)) throw new ToolError("Nothing to change: give at least one field.");
+      const { count } = await db.kgpLot.updateMany({ where: { lotNo: lot_no }, data });
+      if (count !== 1) throw new ToolError(`No lot ${lot_no} in Club & Run.`);
+      return db.kgpLot.findUnique({ where: { lotNo: lot_no } });
+    },
+  ),
+  update_club_order: tool(
+    "Change planning fields of one Club & Run order in our database. Our copy only: the next sync from the Club & Run sheet overwrites it. " +
+      "Lot No and Supply from are the MD's decision (rules CR-C-12, CR-C-14): change them only on his word.",
+    z.strictObject({
+      prod_order: z.string().trim().min(1).max(40).describe("The production order to change, e.g. P726Y-00235"),
+      lot_no: z.string().trim().max(40).nullable().optional().describe("Lot to put the order in; null takes it out of its lot"),
+      supply_from: z.string().trim().max(200).nullable().optional().describe("Manufacture / Dead stock / Old stock / Free stock"),
+      remarks: z.string().trim().max(2000).nullable().optional(),
+    }),
+    async ({ prod_order, lot_no, supply_from, remarks }, db) => {
+      const data = { lotNo: lot_no, supplyFrom: supply_from, remarks };
+      if (Object.values(data).every((v) => v === undefined)) throw new ToolError("Nothing to change: give at least one field.");
+      const { count } = await db.kgpOrder.updateMany({ where: { prodOrder: prod_order }, data });
+      if (count !== 1) throw new ToolError(`No order ${prod_order} in Club & Run.`);
+      return db.kgpOrder.findUnique({ where: { prodOrder: prod_order } });
     },
   ),
   list_data: tool("List the read-only data tables: what each holds and its columns.", z.object({}), async () =>
