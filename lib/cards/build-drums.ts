@@ -6,7 +6,7 @@ import { addDays } from "./calendar.ts";
 import { DRUM_DAYS, heldUp, raccoonNote } from "./drums.ts";
 import { parseDrumStock, sizeKey, type Day, type DrumAssemblyRow, type DrumNeedRow, type DrumStockRow, type PlanRow } from "./sheet.ts";
 
-const SHEETS = {
+export const DRUM_SHEETS = {
   S7: { id: "1AwxIYC73AGS2hLL0MEuXAdt2vhE7IWZEu5ELDTp-XBE", name: "KGP Finished Goods Drum Stock & Alternative", tab: "Drum Stock" },
   S8: { id: "1V5YkE3ukRRib_1hlUU3xDTZuskJaYCXMPPcbqIeKPPI", name: "Armouring 5 – SFG Dashboard Data", tab: "Drum length" },
 } as const;
@@ -17,8 +17,8 @@ export type DrumGrids = { stock: unknown[][]; lengths: unknown[][] };
 /** Reads both tabs. One error names every sheet that could not be read. */
 export async function readDrumSources(): Promise<DrumGrids> {
   const keys = ["S7", "S8"] as const;
-  const got = await Promise.allSettled(keys.map((k) => batchGet(SHEETS[k].id, [`'${SHEETS[k].tab}'`])));
-  const failed = keys.flatMap((k, i) => (got[i].status === "rejected" ? [`${k} "${SHEETS[k].name}", tab "${SHEETS[k].tab}" (${SHEETS[k].id}): ${(got[i] as PromiseRejectedResult).reason?.message ?? got[i]}`] : []));
+  const got = await Promise.allSettled(keys.map((k) => batchGet(DRUM_SHEETS[k].id, [`'${DRUM_SHEETS[k].tab}'`])));
+  const failed = keys.flatMap((k, i) => (got[i].status === "rejected" ? [`${k} "${DRUM_SHEETS[k].name}", tab "${DRUM_SHEETS[k].tab}" (${DRUM_SHEETS[k].id}): ${(got[i] as PromiseRejectedResult).reason?.message ?? got[i]}`] : []));
   if (failed.length) throw new Error(`Cannot read ${failed.length} sheet(s) – share them with ${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL} as Viewer:\n  ${failed.join("\n  ")}`);
   const [[stock], [lengths]] = got.map((g) => (g as PromiseFulfilledResult<unknown[][][]>).value);
   return { stock: stock ?? [], lengths: lengths ?? [] };
@@ -30,11 +30,11 @@ const whole = (n: number | null) => (n === null ? null : Math.round(n));
 /** Guide 3.1: "84 X 35 X 38 X 3 + EXTRA SEGMENT" → "84×35×38×3 + extra segment". */
 export const sizeText = (s: string) => s.replace(/\s+/g, " ").trim().replace(/ X /gi, "×").replace(/\+ EXTRA SEGMENT/i, "+ extra segment").replace(/ - RDSO/i, " RDSO");
 /** A tab that cannot be read says which tab it is. */
-const tab = <T>(k: keyof typeof SHEETS, f: () => T): T => {
+const tab = <T>(k: keyof typeof DRUM_SHEETS, f: () => T): T => {
   try {
     return f();
   } catch (e) {
-    throw new Error(`${k} "${SHEETS[k].name}", tab "${SHEETS[k].tab}": ${(e as Error).message}`);
+    throw new Error(`${k} "${DRUM_SHEETS[k].name}", tab "${DRUM_SHEETS[k].tab}": ${(e as Error).message}`);
   }
 };
 

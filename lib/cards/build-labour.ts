@@ -10,9 +10,9 @@ type Grid = unknown[][];
 export type LabourGrids = { machines: Grid; roster: Grid; rosterName: string; skill: Grid; blocked: Grid };
 
 const S4 = { id: "1EiRA3GUfM0aI7Mp1IpPDqnK41L3PBWN-nvje7AK3dWg", name: "KHG Machines to Run Daily", range: "Machines!A6:Z" };
-const S6 = { id: "1PpDwZ5vXyLGDsovbSlOiH3HxCYyQMy2XD5P6tQAfDYU", name: "Skill sheet", range: "'Highlighted (Excel data)'" };
-const S10 = { id: "1ztbcLWLKGBE8WLpVP7RB8ZVJBHdOjRoOqyPPFWRmIik", name: "KGP Punch Blocked List", range: "'Punch Blocked'!A3:Z" };
-const ROSTER_TITLE = "KGP-ROS";
+export const S6 = { id: "1PpDwZ5vXyLGDsovbSlOiH3HxCYyQMy2XD5P6tQAfDYU", name: "Skill sheet", range: "'Highlighted (Excel data)'" };
+export const S10 = { id: "1ztbcLWLKGBE8WLpVP7RB8ZVJBHdOjRoOqyPPFWRmIik", name: "KGP Punch Blocked List", range: "'Punch Blocked'!A3:Z" };
+export const ROSTER_TITLE = "KGP-ROS";
 const ROSTER_TAB = "'MACHINE ROSTER (machine name)'";
 
 /** Reads the four sheets; the roster is found by title on every run. One error names every sheet that could not be read. */

@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-/** The pages of the app: the machine dashboard and the four KGP cards. Shown in the top bar of every page. */
+/** The pages of the app: Club & Run, the four KGP cards and the connected sheets. Shown in the top bar of every page. */
 export const MAIN_NAV = [
-  { href: "/dashboard/arm5", label: "Dashboard" },
+  { href: "/club-run", label: "Club & Run" },
   { href: "/cards/production", label: "Production cards" },
   { href: "/cards/labour", label: "Labour card" },
   { href: "/cards/drum-requirement", label: "Drum requirement" },
   { href: "/cards/drum-assembly", label: "Drum assembly" },
+  { href: "/connectors", label: "Connectors" },
 ] as const;
 
 export type MainHref = (typeof MAIN_NAV)[number]["href"];

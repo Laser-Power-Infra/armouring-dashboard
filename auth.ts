@@ -75,7 +75,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorized({ auth, request }) {
       if (!auth?.user) return false;
       if (auth.user.role === "admin") return true;
-      return Response.redirect(new URL("/dashboard/arm5", request.nextUrl));
+      return Response.redirect(new URL("/club-run", request.nextUrl));
     },
   },
 });

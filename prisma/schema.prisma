@@ -413,6 +413,16 @@ model KgpLot {
   lotNo        String  @id @map("lot_no")
   runOrder     Int     @map("run_order")
   approvedByMd Boolean @map("approved_by_md")
+  // The rest of the Club & Run Lots tab, stored as is for display.
+  whatClubbed              String?   @map("what_clubbed")
+  created                  DateTime? @db.Date
+  orders                   Int?
+  balanceKm                Float?    @map("balance_km")
+  conductorPendingCoreKm   Float?    @map("conductor_pending_core_km")
+  insulationPendingCoreKm  Float?    @map("insulation_pending_core_km")
+  sentToPlant              Boolean?  @map("sent_to_plant")
+  status                   String?
+  remarks                  String?
 
   @@map("kgp_lots")
 }
@@ -428,6 +438,19 @@ model KgpOrder {
   lotNo         String? @map("lot_no")
   runOrderInLot Int?    @map("run_order_in_lot")
   supplyFrom    String? @map("supply_from")
+  // The rest of the Club & Run Orders tab, stored as is for display. Never plan from these balances (rules).
+  armour            String?
+  orderDate         DateTime? @map("order_date") @db.Date
+  approved          String?
+  conductorBalCoreKm  Float?  @map("conductor_bal_core_km")
+  insulationBalCoreKm Float?  @map("insulation_bal_core_km")
+  layingBalKm       Float?    @map("laying_bal_km")
+  innerBalKm        Float?    @map("inner_bal_km")
+  armouringBalKm    Float?    @map("armouring_bal_km")
+  finishBalKm       Float?    @map("finish_bal_km")
+  pendingFrom       String?   @map("pending_from")
+  remarks           String?
+  suggestedLot      String?   @map("suggested_lot")
 
   @@map("kgp_orders")
 }
@@ -488,6 +511,7 @@ model MdRules {
   newRuleId Int?     @map("new_rule_id") // set on an old rule: the rule that replaced it
   newRule   MdRules?  @relation("OldToNew", fields: [newRuleId], references: [id])
   oldRules  MdRules[] @relation("OldToNew") // the rules this one replaced
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz // set by delete_rule: the rule is kept but no longer in force
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([topic])

@@ -42,7 +42,7 @@ async function signUp(formData: FormData) {
     // Unique violation from a parallel sign-up with the same email.
     redirect("/signup?error=taken");
   }
-  await signIn("credentials", { email, password, redirectTo: "/dashboard/arm5" });
+  await signIn("credentials", { email, password, redirectTo: "/club-run" });
 }
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {

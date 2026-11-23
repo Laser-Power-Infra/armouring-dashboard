@@ -112,6 +112,9 @@ export type BuildOptions = {
  * The four cards built in the app: sync the sheets, plan Card 1, then place the men (Card 2) and count the
  * drums (Cards 3 and 4) from that plan. Day 0 is today in plant time. Every build is a new revision of today's issue.
  */
+/** A sync_runs row for a tab read without error. */
+const readOk = (source: string, tab: string, grid: unknown[]) => ({ source, tab, rows: grid.length, ok: true });
+
 export async function buildCards(db: PrismaClient, { now = new Date(), note = "", ifChanged = false, read = readSources, readLabour = readLabourSources, readDrums = readDrumSources }: BuildOptions = {}) {
   const grids = await read().catch(async (e) => {
     await db.syncRun.create({ data: { source: "S1 S3 S4 S8", tab: "*", rows: 0, ok: false } });
@@ -128,10 +131,16 @@ export async function buildCards(db: PrismaClient, { now = new Date(), note = ""
   const [men, drums] = await Promise.all([
     attempt(async () => {
       const g = await readLabour();
+      // For the Connectors page. S5 is the roster: its tab here is the roster's title, which changes with every revision.
+      await db.syncRun.createMany({ data: [readOk("S4", "Machines (labour)", g.machines), readOk("S5", g.rosterName, g.roster), readOk("S6", "Highlighted (Excel data)", g.skill), readOk("S10", "Punch Blocked", g.blocked)] });
       const placed = allocateLabour(rows, g, d0);
       return { ...placed, rosterName: `${g.rosterName} ends ${dMon(placed.rosterEnds)}` };
     }),
-    attempt(async () => planDrums(rows, await readDrums(), d0)),
+    attempt(async () => {
+      const g = await readDrums();
+      await db.syncRun.createMany({ data: [readOk("S7", "Drum Stock", g.stock), readOk("S8", "Drum length", g.lengths)] });
+      return planDrums(rows, g, d0);
+    }),
   ]);
   // Same day 0 and the same rows and reasons = the same cards. The SFG pull time is left out: a new pull of the same data changes nothing.
   const fingerprint = createHash("sha256").update(JSON.stringify({ d0, rows, notPlanned, men, drums })).digest("hex");

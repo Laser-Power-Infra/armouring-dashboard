@@ -14,12 +14,12 @@ export const instant = false;
  * so a crafted link can never send people to another site.
  */
 function safeReturnPath(callbackUrl?: string) {
-  if (!callbackUrl) return "/dashboard/arm5";
+  if (!callbackUrl) return "/club-run";
   try {
     const u = new URL(callbackUrl, "http://local");
-    return u.pathname.startsWith("/") && !u.pathname.startsWith("//") ? u.pathname + u.search : "/dashboard/arm5";
+    return u.pathname.startsWith("/") && !u.pathname.startsWith("//") ? u.pathname + u.search : "/club-run";
   } catch {
-    return "/dashboard/arm5";
+    return "/club-run";
   }
 }
 

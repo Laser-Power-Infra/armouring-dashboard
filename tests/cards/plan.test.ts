@@ -99,8 +99,8 @@ describe("Card 1 sources", () => {
   it("reads the columns the guide names", () => {
     const row = (cells: Record<number, unknown>, width: number) => Array.from({ length: width }, (_, i) => cells[i] ?? "");
     const t = parseSources({
-      lots: [row({ 0: 1, 1: "PL-001", 8: true }, 12), row({ 0: 2, 1: "PL-002", 8: "FALSE" }, 12), row({ 0: 3 }, 12)],
-      orders: [row({ 0: "P726Y-00001", 1: "MC-1", 2: "Adani", 3: "3.5 CORE", 4: 300, 5: 3.5, 7: "XLPE", 17: "PL-001", 18: 2, 20: "Manufacture" }, 22), row({ 0: "P726Y-00002", 4: "-", 5: "-" }, 22)],
+      lots: [row({ 0: 1, 1: "PL-001", 2: "Strip 4x0.8", 3: 46328, 4: 5, 5: 18.05, 8: true, 9: true, 10: "Approved" }, 12), row({ 0: 2, 1: "PL-002", 8: "FALSE" }, 12), row({ 0: 3 }, 12)],
+      orders: [row({ 0: "P726Y-00001", 1: "MC-1", 2: "Adani", 3: "3.5 CORE", 4: 300, 5: 3.5, 6: "Strip 4x0.8", 7: "XLPE", 8: 46195, 9: "Yes", 14: 0.91, 16: "Armouring", 17: "PL-001", 18: 2, 20: "Manufacture", 21: "PL-007" }, 22), row({ 0: "P726Y-00002", 4: "-", 5: "-" }, 22)],
       // The second line repeats the first (as the SFG pull did on 23-Nov): kept once.
       lines: [0, 1].map(() => row({ 0: "P726Y-00001", 5: "BIG POWER CABLE - ARD", 7: "LAYING", 8: "MS1", 9: "3.5 CORE X 300", 10: 20, 11: "1,907", 12: 0.93, 14: "Kharagpur", 15: "U1" }, 16)),
       bom: [row({ 0: "U1", 4: 1.001, 5: "RL1", 6: "PP FILLER", 7: 20, 8: "KG" }, 9)],
@@ -108,8 +108,11 @@ describe("Card 1 sources", () => {
       men: [row({ 0: "Armouring No 5", 3: true, 5: 3, 6: "Day: mostly 5" }, 14), row({ 0: "Extruder No 35", 3: false, 6: "Day: mostly 3 (avg 3.3)" }, 14), row({ 0: "Extruder No 51", 6: "No ERP code – no history" }, 14), row({ 0: "Boiler 7", 5: 3 }, 14)],
       readme: "",
     });
-    expect(t.lots).toEqual([{ lotNo: "PL-001", runOrder: 1, approvedByMd: true }, { lotNo: "PL-002", runOrder: 2, approvedByMd: false }]);
-    expect(t.orders[0]).toEqual({ prodOrder: "P726Y-00001", mcNo: "MC-1", party: "Adani", cable: "3.5 CORE", sizeSqmm: 300, cores: 3.5, insulation: "XLPE", lotNo: "PL-001", runOrderInLot: 2, supplyFrom: "Manufacture" });
+    expect(t.lots).toMatchObject([{ lotNo: "PL-001", runOrder: 1, approvedByMd: true }, { lotNo: "PL-002", runOrder: 2, approvedByMd: false }]);
+    // Every other Club & Run column is kept for display; serial 46328 is 2-Nov-2026.
+    expect(t.lots[0]).toMatchObject({ whatClubbed: "Strip 4x0.8", created: new Date("2026-11-02"), orders: 5, balanceKm: 18.05, sentToPlant: true, status: "Approved", remarks: null });
+    expect(t.orders[0]).toMatchObject({ prodOrder: "P726Y-00001", mcNo: "MC-1", party: "Adani", cable: "3.5 CORE", sizeSqmm: 300, cores: 3.5, insulation: "XLPE", lotNo: "PL-001", runOrderInLot: 2, supplyFrom: "Manufacture" });
+    expect(t.orders[0]).toMatchObject({ armour: "Strip 4x0.8", orderDate: new Date("2026-06-22"), approved: "Yes", armouringBalKm: 0.91, layingBalKm: null, pendingFrom: "Armouring", suggestedLot: "PL-007" });
     expect(t.orders[1]).toMatchObject({ sizeSqmm: null, cores: null, lotNo: null });
     expect(t.lines).toHaveLength(1);
     expect(t.lines[0]).toMatchObject({ stage: "LAYING", sfgCode: "MS1", netQty: 20, doneQty: 1907, balance: 0.93, scope: "Kharagpur", sfgBom: "U1" });

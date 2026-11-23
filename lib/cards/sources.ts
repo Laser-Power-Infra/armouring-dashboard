@@ -14,9 +14,13 @@ export const SHEETS = {
 type Grid = unknown[][];
 export type Grids = { lots: Grid; orders: Grid; rm: Grid; men: Grid; lines: Grid; bom: Grid; readme: string };
 
+/** The Club & Run columns kept only for display; the planner never reads them. */
+type LotRest = { whatClubbed: string | null; created: Date | null; orders: number | null; balanceKm: number | null; conductorPendingCoreKm: number | null; insulationPendingCoreKm: number | null; sentToPlant: boolean; status: string | null; remarks: string | null };
+type OrderRest = { armour: string | null; orderDate: Date | null; approved: string | null; conductorBalCoreKm: number | null; insulationBalCoreKm: number | null; layingBalKm: number | null; innerBalKm: number | null; armouringBalKm: number | null; finishBalKm: number | null; pendingFrom: string | null; remarks: string | null; suggestedLot: string | null };
+
 export type Tables = {
-  lots: { lotNo: string; runOrder: number; approvedByMd: boolean }[];
-  orders: { prodOrder: string; mcNo: string | null; party: string | null; cable: string | null; sizeSqmm: number | null; cores: number | null; insulation: string | null; lotNo: string | null; runOrderInLot: number | null; supplyFrom: string | null }[];
+  lots: ({ lotNo: string; runOrder: number; approvedByMd: boolean } & Partial<LotRest>)[];
+  orders: ({ prodOrder: string; mcNo: string | null; party: string | null; cable: string | null; sizeSqmm: number | null; cores: number | null; insulation: string | null; lotNo: string | null; runOrderInLot: number | null; supplyFrom: string | null } & Partial<OrderRest>)[];
   lines: { prodOrder: string; fgType: string | null; stage: string; sfgCode: string; sfgItem: string; netQty: number; doneQty: number; balance: number; scope: string | null; sfgBom: string | null }[];
   bom: { sfgBom: string; lineNo: number; materialCode: string; material: string; kgPerKm: number }[];
   rm: { itemCode: string; item: string; qtyForPlanning: number }[];
@@ -42,15 +46,26 @@ const num = (v: unknown) => {
   return s === "" || s === "-" || !Number.isFinite(Number(s)) ? null : Number(s);
 };
 const yes = (v: unknown) => v === true || text(v).toUpperCase() === "TRUE";
+/** A Sheets serial day (counted from 30-Dec-1899); anything else is no date. */
+const day = (v: unknown) => (typeof v === "number" ? new Date(Date.UTC(1899, 11, 30 + Math.floor(v))) : null);
 
 /** Sync rules of the guide, 3.2. */
 export function parseSources(g: Grids): Tables {
   const has = (col: number) => (r: unknown[]) => text(r[col]) !== "";
   return {
-    lots: g.lots.filter(has(1)).map((r) => ({ lotNo: text(r[1]), runOrder: Math.round(num(r[0]) ?? 0), approvedByMd: yes(r[8]) })),
+    lots: g.lots.filter(has(1)).map((r) => {
+      const n = num(r[4]);
+      return {
+        lotNo: text(r[1]), runOrder: Math.round(num(r[0]) ?? 0), approvedByMd: yes(r[8]),
+        whatClubbed: textOrNull(r[2]), created: day(r[3]), orders: n === null ? null : Math.round(n), balanceKm: num(r[5]), conductorPendingCoreKm: num(r[6]), insulationPendingCoreKm: num(r[7]), sentToPlant: yes(r[9]), status: textOrNull(r[10]), remarks: textOrNull(r[11]),
+      };
+    }),
     orders: g.orders.filter(has(0)).map((r) => {
       const run = num(r[18]);
-      return { prodOrder: text(r[0]), mcNo: textOrNull(r[1]), party: textOrNull(r[2]), cable: textOrNull(r[3]), sizeSqmm: num(r[4]), cores: num(r[5]), insulation: textOrNull(r[7]), lotNo: textOrNull(r[17]), runOrderInLot: run === null ? null : Math.round(run), supplyFrom: textOrNull(r[20]) };
+      return {
+        prodOrder: text(r[0]), mcNo: textOrNull(r[1]), party: textOrNull(r[2]), cable: textOrNull(r[3]), sizeSqmm: num(r[4]), cores: num(r[5]), insulation: textOrNull(r[7]), lotNo: textOrNull(r[17]), runOrderInLot: run === null ? null : Math.round(run), supplyFrom: textOrNull(r[20]),
+        armour: textOrNull(r[6]), orderDate: day(r[8]), approved: textOrNull(r[9]), conductorBalCoreKm: num(r[10]), insulationBalCoreKm: num(r[11]), layingBalKm: num(r[12]), innerBalKm: num(r[13]), armouringBalKm: num(r[14]), finishBalKm: num(r[15]), pendingFrom: textOrNull(r[16]), remarks: textOrNull(r[19]), suggestedLot: textOrNull(r[21]),
+      };
     }),
     // The SFG pull sometimes repeats a line (same order, stage and item). One line per key; adding the copies would count it twice.
     lines: [

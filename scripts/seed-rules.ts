@@ -1,6 +1,6 @@
 // Loads one file of MD rules into md_rules: node scripts/seed-rules.ts prisma/data/<file>.json
 // Safe to re-run: a rule is added only when its code was never loaded, so a rule changed later is not overwritten.
-// shortcut: a new version of a file does not change rules already loaded; replace those through the MCP save_rule tool.
+// shortcut: a new version of a file does not change rules already loaded; replace those through the MCP update_rule tool.
 import { readFileSync } from "node:fs";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { type Prisma, PrismaClient } from "../lib/generated/prisma/client.ts";

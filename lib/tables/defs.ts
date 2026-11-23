@@ -3,7 +3,7 @@ import { Prisma } from "../generated/prisma/client.ts";
 // The whitelist. Table names, column names and SQL sources reach the database only from this file;
 // request input is only ever matched against it and bound as values.
 
-export const TABLE_NAMES = ["cable-ready", "wait-inner", "wait-laying", "wait-insulation", "wait-outer", "work-left", "lots", "entries"] as const;
+export const TABLE_NAMES = ["cable-ready", "wait-inner", "wait-laying", "wait-insulation", "wait-outer", "work-left", "lots", "entries", "club-lots", "club-orders"] as const;
 export type TableName = (typeof TABLE_NAMES)[number];
 
 /** text, bool, day: filter dropdown. number, time: sort only (a list of every distinct km filters nothing). */
@@ -126,6 +126,74 @@ export const TABLES: Record<TableName, TableDef> = {
     defaultOrder: Prisma.sql`"enteredAt" DESC`,
     defaultSort: { key: "enteredAt", dir: "desc" },
     tiebreak: Prisma.sql`"id" ASC`,
+    defaultSize: 10,
+  },
+  // Club & Run sheet as stored by the cards sync. Plant-wide: the machine scope is not used.
+  "club-lots": {
+    name: "club-lots",
+    title: "Club & Run – Lots",
+    source: () => Prisma.sql`(
+      SELECT run_order AS "runOrder", lot_no AS "lotNo", what_clubbed AS "whatClubbed", to_char(created, 'YYYY-MM-DD') AS "created",
+             orders, balance_km AS "balanceKm", conductor_pending_core_km AS "conductorPending", insulation_pending_core_km AS "insulationPending",
+             approved_by_md AS "approvedByMd", sent_to_plant AS "sentToPlant", status, remarks
+      FROM kgp_lots) t`,
+    columns: [
+      { key: "runOrder", label: "Run order", kind: "number", format: "int" },
+      { key: "lotNo", label: "Lot", kind: "text", search: true },
+      { key: "whatClubbed", label: "What is clubbed", kind: "text", search: true },
+      { key: "created", label: "Created", kind: "day" },
+      { key: "orders", label: "Orders", kind: "number", format: "int" },
+      { key: "balanceKm", label: "Balance to finish km", kind: "number", format: "km" },
+      { key: "conductorPending", label: "Conductor pending core km", kind: "number", format: "km" },
+      { key: "insulationPending", label: "Insulation pending core km", kind: "number", format: "km" },
+      { key: "approvedByMd", label: "Approved by MD", kind: "bool" },
+      { key: "sentToPlant", label: "Sent to plant", kind: "bool" },
+      { key: "status", label: "Status", kind: "text" },
+      { key: "remarks", label: "Remarks", kind: "text", search: true },
+    ],
+    defaultOrder: Prisma.sql`"runOrder" ASC`,
+    defaultSort: { key: "runOrder", dir: "asc" },
+    tiebreak: Prisma.sql`"lotNo" ASC`,
+    defaultSize: 10,
+  },
+  "club-orders": {
+    name: "club-orders",
+    title: "Club & Run – Orders",
+    source: () => Prisma.sql`(
+      SELECT prod_order AS "prodOrder", mc_no AS "mcNo", party, cable, size_sqmm AS "sizeSqmm", cores, armour, insulation,
+             to_char(order_date, 'YYYY-MM-DD') AS "orderDate", approved,
+             conductor_bal_core_km AS "conductorBal", insulation_bal_core_km AS "insulationBal", laying_bal_km AS "layingBal",
+             inner_bal_km AS "innerBal", armouring_bal_km AS "armouringBal", finish_bal_km AS "finishBal",
+             pending_from AS "pendingFrom", lot_no AS "lotNo", run_order_in_lot AS "runOrderInLot", remarks,
+             supply_from AS "supplyFrom", suggested_lot AS "suggestedLot"
+      FROM kgp_orders) t`,
+    columns: [
+      { key: "prodOrder", label: "Order", kind: "text", search: true },
+      { key: "mcNo", label: "MC no", kind: "text", search: true },
+      { key: "party", label: "Party", kind: "text", search: true },
+      { key: "cable", label: "Cable", kind: "text", search: true },
+      { key: "sizeSqmm", label: "Size sq mm", kind: "number" },
+      { key: "cores", label: "Cores", kind: "number" },
+      { key: "armour", label: "Armour", kind: "text" },
+      { key: "insulation", label: "Insulation", kind: "text" },
+      { key: "orderDate", label: "Order date", kind: "day" },
+      { key: "approved", label: "Approved", kind: "text" },
+      { key: "conductorBal", label: "Conductor bal core km", kind: "number", format: "km" },
+      { key: "insulationBal", label: "Insulation bal core km", kind: "number", format: "km" },
+      { key: "layingBal", label: "Laying bal km", kind: "number", format: "km" },
+      { key: "innerBal", label: "Inner bal km", kind: "number", format: "km" },
+      { key: "armouringBal", label: "Armouring bal km", kind: "number", format: "km" },
+      { key: "finishBal", label: "Finish bal km", kind: "number", format: "km" },
+      { key: "pendingFrom", label: "Pending from", kind: "text" },
+      { key: "lotNo", label: "Lot", kind: "text", search: true },
+      { key: "runOrderInLot", label: "Run order", kind: "number", format: "int" },
+      { key: "remarks", label: "Remarks", kind: "text", search: true },
+      { key: "supplyFrom", label: "Supply from", kind: "text" },
+      { key: "suggestedLot", label: "Suggested lot", kind: "text", search: true },
+    ],
+    defaultOrder: Prisma.sql`"lotNo" ASC NULLS LAST, "runOrderInLot" ASC NULLS LAST`,
+    defaultSort: null,
+    tiebreak: Prisma.sql`"prodOrder" ASC`,
     defaultSize: 10,
   },
 };
