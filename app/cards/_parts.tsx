@@ -1,10 +1,11 @@
+import { cachedIssues } from "@/lib/cached";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
 import { ddMonYy } from "@/lib/cards/calendar";
 import type { CalCell } from "@/lib/cards/calendar";
-import { getIssues, issueName, versionLabel, type Issue } from "@/lib/cards/data";
+import { issueName, versionLabel, type Issue } from "@/lib/cards/data";
 import { MainNav } from "@/components/dash/main-nav";
+import { AccountMenu } from "@/components/dash/account-menu";
 import { ConfirmButton, IssuePicker, PrintButton, RegenerateButton } from "./_controls";
 
 export const CARD_TABS = [
@@ -19,7 +20,7 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 /** The issue to show: the one asked for in ?issue=, else the newest. Null when nothing has been stored yet. */
 export async function pickIssue(searchParams: Search): Promise<{ issue: Issue; issues: Issue[] } | null> {
   const asked = (await searchParams).issue;
-  const issues = await getIssues(db);
+  const issues = await cachedIssues();
   if (!issues.length) return null;
   if (asked === undefined) return { issue: issues[0], issues };
   const issue = issues.find((i) => String(i.id) === asked);
@@ -48,6 +49,7 @@ export function CardShell({ active, picked, variant = "", children }: { active: 
             {active === "/cards/production" && <RegenerateButton />}
             {picked?.issue.review && <ConfirmButton id={picked.issue.id} />}
             {picked && <PrintButton />}
+            <AccountMenu />
           </div>
         </div>
       </header>

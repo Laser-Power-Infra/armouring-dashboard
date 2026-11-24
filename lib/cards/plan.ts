@@ -80,8 +80,16 @@ function campaignEnd(c: Campaign, work: Map<string, number>, ran: string[]) {
 }
 
 const sizeOf = (sfgItem: string) => Number(/\d+(\.\d+)?/.exec(sfgItem)?.[0] ?? NaN);
+/** Power cable conductor. 16, 50 and 95 sq mm: machine to confirm (null), so they go to the to-confirm list. 19-wire 70 never on Skip 10. */
 const condMachine = (size: number): MachineName | null =>
-  size > 300 ? "MS-11" : size >= 150 ? "MS-14" : size === 70 || size === 95 ? "Skip (12+7)-1" : size === 50 ? "Skip (12+7)-2" : size === 16 || size === 25 || size === 35 ? "Skip 8" : null;
+  size > 300 ? "MS-11" : size >= 150 ? "MS-14" : size === 70 ? "Skip (12+7)-1" : size === 25 || size === 35 ? "Skip 8" : null;
+/** Conductor for Sioplas (HT): 300 sq mm and above on MS-11, below 300 (185) on MS-14. */
+const htMachine = (size: number): MachineName => (size >= 300 ? "MS-11" : "MS-14");
+/** Laying 5 km a day: 300 sq mm 3, other 7. */
+const layRate = (size: number) => (size === 300 ? 3 : 7);
+/** Insulated core on one drum (~24 drums in all): 300 sq mm about 1 km, small cable 4–5 km. */
+const INS_DRUMS = 24;
+const insKmPerDrum = (size: number, big: boolean) => (size >= 300 || big ? 1 : 4.5);
 const insMachine = (size: number): MachineName => (size <= 70 ? "Extruder 35" : "Extruder 22");
 const COND_RATE: Partial<Record<MachineName, number>> = { "Skip (12+7)-1": 10, "Skip (12+7)-2": 11, "Skip 8": 25, "MS-14": 12.6, "MS-11": 12 };
 /** kg of compound a day (guide 3.3). */
@@ -92,11 +100,13 @@ const TONNAGE: Partial<Record<MachineName, Record<string, number>>> = {
   "Extruder 52": { PVC: 7500, HDPE: 5500 },
 };
 const WIRE_FEED = "Aluminium wire drawn on WD14";
+/** Job-text tail of a small-cable sheathing job on Extruder 52; the production card colours these lines. */
+export const ASK_E51 = "may go to Extruder 51?";
 
 export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: string[] } {
   const bomBy = Map.groupBy(t.bom, (b) => b.sfgBom);
   const linesBy = Map.groupBy(t.lines, (l) => l.prodOrder);
-  const lotBy = new Map(t.lots.filter((l) => l.approvedByMd).map((l) => [l.lotNo, l]));
+  const lotBy = new Map(t.lots.filter((l) => l.approvedByMd && l.sentToPlant !== false).map((l) => [l.lotNo, l]));
   const notPlanned: string[] = [];
   const firstWord = (s: string | null) => (s ?? "").trim().split(/\s+/)[0];
 
@@ -138,9 +148,13 @@ export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: st
       }];
     });
 
+  /** Covered conductor of 100 sq mm (or less) runs on MS-18 only, without a first pass. */
+  const ccDirect = (x: Ord) => (x.cond[0]?.size ?? Infinity) <= 100;
   const of = (kind: Ord["kind"]) => orders.filter((x) => x.kind === kind);
   const [cables, hts, acsrs, ccs] = [of("cable"), of("ht"), of("acsr"), of("cc")];
   for (const x of cables) for (const it of x.cond) if (it.bal > EPS && !condMachine(it.size)) notPlanned.push(`${x.o.prodOrder} (${firstWord(x.o.party)}): ${it.size} sq mm conductor, ${+it.bal.toFixed(2)} core km – machine to confirm`);
+  if (cables.some((x) => x.big && x.ins.some((i) => i.bal > EPS && i.size < 300)))
+    notPlanned.push("Insulated core per drum for big cable below 300 sq mm: taken as 1 km (as for 300 sq mm) – to confirm");
 
   // ── text on the rows (4.4, 4.5) ──
   const partyCable = (x: Ord) => {
@@ -235,27 +249,32 @@ export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: st
       job("Skip 10", x, q, 23, "km", { line: it.line, feed: "Aluminium wire drawn on WD17", job: "ACSR Raccoon", status: d <= 2 ? "ok" : "drum" });
     }
 
-    // 3. HT conductor on MS-11, kept to 27 core km of stock.
+    // 3. HT conductor: 300 sq mm and above on MS-11, below on MS-14; HT conductor stock kept to 27 core km.
     for (const x of hts) for (const it of x.cond) {
-      const q = Math.min(it.bal, left("MS-11") * 12, 27 - sum(hts, (y) => stocks(y.condStock)));
+      const m = htMachine(it.size);
+      const q = Math.min(it.bal, left(m) * COND_RATE[m]!, 27 - sum(hts, (y) => stocks(y.condStock)));
       if (q <= EPS) continue;
       it.bal -= q;
-      job("MS-11", x, q, 12, "core km", { line: it.line, core: sizeCore(x, it), feed: WIRE_FEED, job: "HT conductor", into: x.condStock.get(it.size) });
+      job(m, x, q, COND_RATE[m]!, "core km", { line: it.line, core: sizeCore(x, it), feed: WIRE_FEED, job: "HT conductor", into: x.condStock.get(it.size) });
     }
 
-    // 4. Covered conductor, only when HT insulation still to do ≤ 27 core km. The rod is counted on the first pass.
+    // 4. Covered conductor, only when HT insulation still to do ≤ 27 core km. 100 sq mm runs on MS-18 only;
+    //    above 100, a first pass on Skip 11 then the final pass on MS-18. The rod is counted on the first machine.
     if (sum(hts, (x) => sum(x.ins, (i) => i.bal)) <= 27) {
-      for (const x of ccs) {
+      for (const x of ccs.filter((y) => !ccDirect(y))) {
         const q = Math.min(x.firstBal, left("Skip 11") * 31.9, 30 - sum(ccs, (y) => y.first.all));
         if (q <= EPS) continue;
         x.firstBal -= q;
         job("Skip 11", x, q, 31.9, "km", { line: x.cond[0].line, feed: WIRE_FEED, job: "Covered conductor – first pass", into: x.first });
       }
       for (const x of ccs) {
-        const q = Math.min(x.finalBal, left("MS-18") * 14.1, x.first.now, 46 - sum(ccs, (y) => y.final.all));
+        const direct = ccDirect(x);
+        const q = Math.min(x.finalBal, left("MS-18") * 14.1, direct ? Infinity : x.first.now, 46 - sum(ccs, (y) => y.final.all));
         if (q <= EPS) continue;
         x.finalBal -= q;
-        job("MS-18", x, q, 14.1, "km", { feed: feed("First-pass conductor", x.first, x.first.take(q), "km"), job: "Covered conductor – final pass", into: x.final });
+        job("MS-18", x, q, 14.1, "km", direct
+          ? { line: x.cond[0].line, feed: WIRE_FEED, job: "Covered conductor", into: x.final }
+          : { feed: feed("First-pass conductor", x.first, x.first.take(q), "km"), job: "Covered conductor – final pass", into: x.final });
       }
     }
 
@@ -274,19 +293,21 @@ export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: st
       job("Sioplas 4", x, q, 23, "km", { line: it.line, feed: feed("Final-pass conductor", x.final, x.final.take(q), "km"), job: "Covered conductor insulation" });
     }
 
-    // 6. Insulation, in lot order, held back while earlier lots have more than 28 km to lay.
+    // 6. Insulation, in lot order: insulated core waits on drums (about 24 in all) and is made at most one day
+    //    ahead of laying, so each order's insulated stock stays within one day of Laying 5 for that order.
     for (const m of ["Extruder 22", "Extruder 35"] as const) {
       const rate = (size: number) => (m === "Extruder 35" ? 12 : size >= 150 ? 16 : size >= 95 ? 24 : 30);
-      const [machineCap, orderCap] = m === "Extruder 22" ? [26, 4] : [44, 9];
-      const eligible = (x: Ord, it: Item) => Math.min(it.bal, x.condStock.get(it.size)?.now ?? 0);
-      const todo = cables.filter((x) => layBalBefore(x) <= 28).flatMap((x) => x.ins.filter((it) => insMachine(it.size) === m && eligible(x, it) > EPS).map((it) => ({ x, it, c: compound(x, it.line) })));
+      const drumsInUse = () => sum(cables, (y) => sum(y.ins, (i) => y.insStock.get(i.line.sfgCode)!.all / insKmPerDrum(i.size, y.big)));
+      const oneDay = (x: Ord, it: Item) => layRate(x.o.sizeSqmm ?? it.size) * x.share.get(it.line.sfgCode)! - x.insStock.get(it.line.sfgCode)!.all;
+      const eligible = (x: Ord, it: Item) => Math.min(it.bal, x.condStock.get(it.size)?.now ?? 0, oneDay(x, it));
+      const todo = cables.flatMap((x) => x.ins.filter((it) => insMachine(it.size) === m && eligible(x, it) > EPS).map((it) => ({ x, it, c: compound(x, it.line) })));
       const work = new Map<string, number>();
       for (const { x, it, c } of todo) work.set(c.name, (work.get(c.name) ?? 0) + eligible(x, it) / rate(it.size));
       const campaign = (insCampaign[m] ??= { current: null, waited: new Map() });
       const ran: string[] = [];
       for (const name of campaignOrder(campaign, work, 0.5, 4)) for (const { x, it, c } of todo.filter((j) => j.c.name === name)) {
-        const madeHere = sum(cables, (y) => sum(y.ins, (i) => (insMachine(i.size) === m ? y.insStock.get(i.line.sfgCode)!.all : 0)));
-        const q = Math.min(eligible(x, it), left(m) * rate(it.size), machineCap - madeHere, orderCap * x.cores - stocks(x.insStock), tonRoom(m, c));
+        const drumRoom = (INS_DRUMS - drumsInUse()) * insKmPerDrum(it.size, x.big);
+        const q = Math.min(eligible(x, it), left(m) * rate(it.size), drumRoom, tonRoom(m, c));
         if (q <= EPS) continue;
         it.bal -= q;
         tonUse(m, c, q);
@@ -297,13 +318,13 @@ export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: st
       campaignEnd(campaign, work, ran);
     }
 
-    // 7. Laying 5, the bottleneck: laid + inner-sheathed stock of all orders is held to 22 km.
+    // 7. Laying 5: laid + inner-sheathed stock of all orders is held to 22 km, so laying keeps pace with Armouring 5 (the bottleneck).
     for (const x of cables) {
       const lay = x.laying;
       if (!lay || lay.bal <= EPS) continue;
       const cores = x.ins.filter((i) => x.share.get(i.line.sfgCode)! > 0);
       const can = cores.length ? Math.min(...cores.map((i) => x.insStock.get(i.line.sfgCode)!.now / x.share.get(i.line.sfgCode)!)) : 0;
-      const rate = (x.o.sizeSqmm ?? Math.max(...x.ins.map((i) => i.size))) === 300 ? 3 : 7;
+      const rate = layRate(x.o.sizeSqmm ?? Math.max(...x.ins.map((i) => i.size)));
       const q = Math.min(lay.bal, can, left("Laying 5") * rate, 22 - sum(cables, (y) => y.laid.all + y.innerS.all));
       if (q <= EPS) continue;
       lay.bal -= q;
@@ -333,9 +354,11 @@ export function planCard1(t: Tables, d0: Day): { rows: PlanRow[]; notPlanned: st
         it.bal -= q;
         tonUse(m, c, q);
         if (!ran.includes(name)) ran.push(name);
+        // Small cable (up to 4C × 25) on Extruder 52: the card asks the plant whether it may go to Extruder 51.
+        const ask51 = m === "Extruder 52" && (x.o.cores ?? Infinity) <= 4 && (x.o.sizeSqmm ?? Infinity) <= 25 ? ` – ${ASK_E51}` : "";
         job(m, x, q, rate(x, outer), "km", outer
-          ? { line: it.line, core: "OUTER sheath", feed: feed("Armoured cable", from, from.take(q), "km"), job: "Outer sheath" }
-          : { line: it.line, core: "INNER sheath", feed: feed("Laid cable", from, from.take(q), "km"), job: "Inner sheath", into: x.innerS });
+          ? { line: it.line, core: "OUTER sheath", feed: feed("Armoured cable", from, from.take(q), "km"), job: `Outer sheath${ask51}` }
+          : { line: it.line, core: "INNER sheath", feed: feed("Laid cable", from, from.take(q), "km"), job: `Inner sheath${ask51}`, into: x.innerS });
       }
       campaignEnd(campaign, work, ran);
     }

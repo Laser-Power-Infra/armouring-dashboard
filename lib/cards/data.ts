@@ -46,18 +46,23 @@ export async function getDrums(db: Db, issueId: number): Promise<{ need: DrumNee
   };
 }
 
-/** What Card 1 prints beside the plan: men per shift (S4), planning stock by material name (S3, through the BOM's codes), approved lots. */
-export async function getCard1Sources(db: Pick<PrismaClient, "machineMen" | "rmStock" | "bomLine" | "kgpLot">) {
-  const [men, rm, bom, approvedLots] = await Promise.all([
+/**
+ * What Card 1 prints beside the plan: men per shift (S4), planning stock by material name (S3, through the BOM's codes),
+ * approved lots, and the FG drum of each order (RM Requirement sheet, as of the last sync).
+ */
+export async function getCard1Sources(db: Pick<PrismaClient, "machineMen" | "rmStock" | "bomLine" | "kgpLot" | "raccoonDrum">) {
+  const [men, rm, bom, approvedLots, drums] = await Promise.all([
     db.machineMen.findMany(),
     db.rmStock.findMany(),
     db.bomLine.findMany({ distinct: ["material"], select: { material: true, materialCode: true } }),
     db.kgpLot.count({ where: { approvedByMd: true } }),
+    db.raccoonDrum.findMany(),
   ]);
   const qty = new Map(rm.map((r) => [r.itemCode, r.qtyForPlanning]));
   return {
     men: new Map(men.map((m) => [m.machine, m.menPerShift])),
     stock: new Map(bom.flatMap((b) => (qty.has(b.materialCode) ? [[b.material, qty.get(b.materialCode)!] as const] : []))),
     approvedLots,
+    drums: new Map(drums.map((d) => [d.prodOrder, d])),
   };
 }

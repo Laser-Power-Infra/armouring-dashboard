@@ -1,5 +1,5 @@
 // Run with `npx prisma db seed` (after `prisma migrate deploy`). Safe to re-run: upserts only.
-// Users are not seeded (no password). Admins come from ADMIN_EMAILS at sign-up.
+// Users are not seeded (no password). Roles are set in the users table (role column); sign-ups start as viewer.
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { Prisma, PrismaClient } from "../lib/generated/prisma/client.ts";
 

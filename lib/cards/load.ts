@@ -108,21 +108,32 @@ export type BuildOptions = {
   /** Scheduled runs: store no new revision when the cards would come out the same as the latest issue. */
   ifChanged?: boolean; read?: () => Promise<Grids>; readLabour?: () => Promise<LabourGrids>; readDrums?: () => Promise<DrumGrids> };
 
-/**
- * The four cards built in the app: sync the sheets, plan Card 1, then place the men (Card 2) and count the
- * drums (Cards 3 and 4) from that plan. Day 0 is today in plant time. Every build is a new revision of today's issue.
- */
 /** A sync_runs row for a tab read without error. */
 const readOk = (source: string, tab: string, grid: unknown[]) => ({ source, tab, rows: grid.length, ok: true });
 
-export async function buildCards(db: PrismaClient, { now = new Date(), note = "", ifChanged = false, read = readSources, readLabour = readLabourSources, readDrums = readDrumSources }: BuildOptions = {}) {
+/** Settings key: how long the last full sync took, in ms. The Connectors page shows it as the estimate. */
+export const LAST_SYNC_MS = "last_sync_ms";
+
+/**
+ * The four cards built in the app: sync the sheets, plan Card 1, then place the men (Card 2) and count the
+ * drums (Cards 3 and 4) from that plan. Day 0 is today in plant time. Every build is a new revision of today's issue.
+ * A run that finishes records how long it took.
+ */
+export async function buildCards(db: PrismaClient, opts: BuildOptions = {}) {
+  const start = Date.now();
+  const r = await build(db, opts);
+  const value = Date.now() - start;
+  await db.setting.upsert({ where: { key: LAST_SYNC_MS }, create: { key: LAST_SYNC_MS, value, description: "Duration of the last full sync, ms", updatedBy: "sync" }, update: { value, updatedBy: "sync" } });
+  return r;
+}
+
+async function build(db: PrismaClient, { now = new Date(), note = "", ifChanged = false, read = readSources, readLabour = readLabourSources, readDrums = readDrumSources }: BuildOptions) {
   const grids = await read().catch(async (e) => {
-    await db.syncRun.create({ data: { source: "S1 S3 S4 S8", tab: "*", rows: 0, ok: false } });
+    await db.syncRun.create({ data: { source: "S1 S3 S4 S8 RM", tab: "*", rows: 0, ok: false } });
     throw e;
   });
-  const tables = parseSources(grids);
   const pull = pullCheck(grids.readme, now);
-  await storeSources(db, tables, pull.pulledAt);
+  const tables = await storeSources(db, parseSources(grids), pull.pulledAt);
   if (pull.problem) throw new Error(`Cards not built: ${pull.problem}`);
 
   const d0 = new Date(now.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 10);
@@ -138,8 +149,8 @@ export async function buildCards(db: PrismaClient, { now = new Date(), note = ""
     }),
     attempt(async () => {
       const g = await readDrums();
-      await db.syncRun.createMany({ data: [readOk("S7", "Drum Stock", g.stock), readOk("S8", "Drum length", g.lengths)] });
-      return planDrums(rows, g, d0);
+      await db.syncRun.createMany({ data: [readOk("S7", "Drum Stock", g.stock)] });
+      return planDrums(rows, g, d0, tables.drums);
     }),
   ]);
   // Same day 0 and the same rows and reasons = the same cards. The SFG pull time is left out: a new pull of the same data changes nothing.

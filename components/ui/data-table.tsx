@@ -46,7 +46,10 @@ export function DataTable({
   defaultSort,
   defaultSize,
   version,
+  edit,
 }: {
+  /** Given only to readers allowed to edit: columns with `edit` values become dropdowns; `key` names the row's id column. */
+  edit?: { key: string; save: (id: string, column: string, value: string) => Promise<string | null> };
   table: TableName;
   machine: string;
   title: string;
@@ -188,7 +191,12 @@ export function DataTable({
                     key={c.key}
                     className={`h-11 max-w-[22rem] truncate whitespace-nowrap border-b border-r border-line-2 px-3 first:sticky first:left-0 first:bg-surface first:font-medium group-hover:first:bg-ground ${c.kind === "number" ? "num text-right" : ""}`}
                   >
-                    <Cell column={c} value={r[c.key]} />
+                    {edit && c.edit ? (
+                      // Keyed by row id and value, so a new page or a reload shows the stored value.
+                      <EditCell key={`${String(r[edit.key])}:${String(r[c.key])}`} column={c} value={r[c.key]} save={(v) => edit.save(String(r[edit.key]), c.key, v)} />
+                    ) : (
+                      <Cell column={c} value={r[c.key]} />
+                    )}
                   </td>
                 ))}
               </tr>
@@ -224,6 +232,48 @@ export function DataTable({
         )}
       </div>
     </div>
+  );
+}
+
+/** A dropdown that saves on change; on failure it goes back to the stored value and says why. */
+function EditCell({ column, value, save }: { column: ClientColumn; value: Row[string]; save: (value: string) => Promise<string | null> }) {
+  const [current, setCurrent] = useState(value === null ? "" : String(value));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const label = (v: string) => (column.kind === "bool" ? yesNo(column.key, v === "true")[0] : v);
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Select
+        aria-label={column.label}
+        // The select fills its box, and a table cell gives it none: a fixed minimum keeps the value readable.
+        className="min-w-36"
+        value={current}
+        disabled={busy}
+        onChange={async (e) => {
+          const next = e.target.value;
+          const before = current;
+          setCurrent(next);
+          setBusy(true);
+          const why = await save(next).catch(() => "Could not save. Try again.");
+          setBusy(false);
+          setError(why);
+          if (why) setCurrent(before);
+        }}
+      >
+        {current === "" && <option value="">–</option>}
+        {column.edit!.map((v) => (
+          <option key={v} value={v}>
+            {label(v)}
+          </option>
+        ))}
+      </Select>
+      {busy && <Spinner size={12} />}
+      {error && (
+        <span role="alert" className="text-caption text-critical" title={error}>
+          Not saved
+        </span>
+      )}
+    </span>
   );
 }
 

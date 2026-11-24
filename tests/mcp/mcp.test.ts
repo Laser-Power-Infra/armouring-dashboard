@@ -50,10 +50,12 @@ describe("mcp server", () => {
       findMany: vi.fn(async () => [{ lotNo: "PL-001" }]),
       count: vi.fn(async () => 25),
       updateMany: vi.fn(async () => ({ count: changed })),
-      findUnique: vi.fn(async () => ({ lotNo: "PL-001", runOrder: 2 })),
+      findUnique: vi.fn(async () => (changed ? { lotNo: "PL-001", runOrder: 2 } : null)),
+      update: vi.fn(async () => ({})),
     };
+    const clubChange = { createMany: vi.fn(async () => ({ count: 1 })) };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return { mdRules, setting, kgpLot, $transaction: (fn: (tx: unknown) => unknown) => fn({ mdRules }) } as any;
+    return { mdRules, setting, kgpLot, clubChange, $transaction: (fn: (tx: unknown) => unknown) => fn({ mdRules, kgpLot, clubChange }) } as any;
   };
   const call = (db: unknown, name: string, args: object) =>
     handleRpc({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }, db as never) as Promise<{
@@ -67,7 +69,7 @@ describe("mcp server", () => {
   });
   it("tools/list gives each tool a JSON schema", async () => {
     const res = (await handleRpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }, fakeDb(1))) as { result: { tools: { name: string; inputSchema: { type: string } }[] } };
-    expect(res.result.tools.map((t) => t.name)).toEqual(["list_rules", "create_rule", "update_rule", "delete_rule", "save_summary", "update_club_lot", "update_club_order", "list_data", "read_data"]);
+    expect(res.result.tools.map((t) => t.name)).toEqual(["list_rules", "create_rule", "update_rule", "delete_rule", "save_summary", "update_club_lot", "approve_lot", "unapprove_lot", "update_club_order", "list_data", "read_data"]);
     expect(res.result.tools.every((t) => t.inputSchema.type === "object")).toBe(true);
   });
   it("list_rules hides replaced rules unless asked", async () => {
@@ -112,16 +114,39 @@ describe("mcp server", () => {
   });
   it("update_club_lot writes only the fields given; an unknown lot, no fields or a calculated field is an error", async () => {
     const db = fakeDb(1);
-    const ok = await call(db, "update_club_lot", { lot_no: "PL-001", run_order: 2, remarks: null });
+    const ok = await call(db, "update_club_lot", { lot_no: "PL-001", run_order: 2, remarks: "check drums" });
     expect(JSON.parse(ok.result.content[0].text)).toEqual({ lotNo: "PL-001", runOrder: 2 });
-    expect(db.kgpLot.updateMany.mock.calls[0][0].where).toEqual({ lotNo: "PL-001" });
-    expect(JSON.parse(JSON.stringify(db.kgpLot.updateMany.mock.calls[0][0].data))).toEqual({ runOrder: 2, remarks: null });
+    expect(db.kgpLot.update.mock.calls[0][0]).toEqual({ where: { lotNo: "PL-001" }, data: { runOrder: 2, remarks: "check drums" } });
+    // Only what changed is logged: run order was already 2.
+    expect(db.clubChange.createMany.mock.calls[0][0].data).toEqual([{ by: "MCP", tbl: "lot", key: "PL-001", field: "remarks", oldValue: null, newValue: "check drums" }]);
 
     expect((await call(fakeDb(0), "update_club_lot", { lot_no: "PL-999", status: "x" })).result.isError).toBe(true);
     const none = fakeDb(1);
     expect((await call(none, "update_club_lot", { lot_no: "PL-001" })).result.isError).toBe(true);
     expect((await call(none, "update_club_lot", { lot_no: "PL-001", balance_km: 3 })).result.isError).toBe(true);
-    expect(none.kgpLot.updateMany).not.toHaveBeenCalled();
+    expect(none.kgpLot.update).not.toHaveBeenCalled();
+  });
+  it("update_club_lot cannot approve: approving is only approve_lot", async () => {
+    const db = fakeDb(1);
+    expect((await call(db, "update_club_lot", { lot_no: "PL-001", approved_by_md: true })).result.isError).toBe(true);
+    expect(db.kgpLot.update).not.toHaveBeenCalled();
+  });
+  it("approve_lot and unapprove_lot set the approval and status, logged with the admin's email", async () => {
+    const as = (db: unknown, name: string, args: object) =>
+      handleRpc({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }, db as never, "MCP md@x.in") as Promise<{ result: { isError?: boolean } }>;
+    const db = fakeDb(1);
+    expect((await as(db, "approve_lot", { lot_no: "PL-001" })).result.isError).toBeUndefined();
+    expect(db.kgpLot.update.mock.calls[0][0]).toEqual({ where: { lotNo: "PL-001" }, data: { approvedByMd: true, status: "Approved" } });
+    expect(db.clubChange.createMany.mock.calls[0][0].data.every((c: { by: string }) => c.by === "MCP md@x.in")).toBe(true);
+
+    await as(db, "unapprove_lot", { lot_no: "PL-001" });
+    expect(db.kgpLot.update.mock.calls[1][0].data).toEqual({ approvedByMd: false, status: "Draft", sentToPlant: false });
+
+    expect((await as(fakeDb(0), "approve_lot", { lot_no: "PL-999" })).result.isError).toBe(true);
+    const closed = fakeDb(1);
+    closed.kgpLot.findUnique.mockResolvedValue({ lotNo: "PL-001", status: "Closed" });
+    expect((await as(closed, "approve_lot", { lot_no: "PL-001" })).result.isError).toBe(true);
+    expect(closed.kgpLot.update).not.toHaveBeenCalled();
   });
   it("bad arguments are a tool error and nothing is written", async () => {
     const db = fakeDb(1);

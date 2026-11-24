@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { Badge } from "@/components/ui/panel";
 import { db } from "@/lib/db";
+import { life } from "@/lib/cached";
 import { ClubRunHeader } from "../_header";
 
 // The MD's Club & Run rules (md_rules) as a rulebook: current rules only, grouped by section, full text.
@@ -18,9 +19,15 @@ const OUTCOME: Record<string, { label: string; tone: "critical" | "warning" | "n
 
 type Details = { section?: string; on_fail?: string | null; message_on_fail?: string | null; override_by?: string | null };
 
+async function currentRules() {
+  "use cache: remote";
+  life();
+  return db.mdRules.findMany({ where: { newRuleId: null, deletedAt: null }, orderBy: [{ code: "asc" }, { id: "asc" }] });
+}
+
 export default async function ClubRunRulesPage() {
   await connection();
-  const rules = await db.mdRules.findMany({ where: { newRuleId: null, deletedAt: null }, orderBy: [{ code: "asc" }, { id: "asc" }] });
+  const rules = await currentRules();
   // Sections in rule-code order (CR-A, CR-B, ...), as the MD's sheet lists them.
   const sections = Map.groupBy(rules, (r) => (r.details as Details | null)?.section ?? "Other");
   const anchor = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");

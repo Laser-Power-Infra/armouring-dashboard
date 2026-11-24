@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { roleFor, signIn } from "@/auth";
+import { signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { AuthShell, FormError } from "@/components/auth-shell";
@@ -36,7 +36,7 @@ async function signUp(formData: FormData) {
   }
   try {
     await db.user.create({
-      data: { name, email, passwordHash: await hashPassword(password), role: roleFor(email) },
+      data: { name, email, passwordHash: await hashPassword(password) }, // role: the table's default, viewer
     });
   } catch {
     // Unique violation from a parallel sign-up with the same email.

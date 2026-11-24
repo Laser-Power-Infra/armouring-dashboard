@@ -23,14 +23,15 @@ describe("machine production cards", () => {
   it("gives the cover its counts", () => {
     expect(c.d0).toBe("2026-11-17");
     expect(c.period).toBe("17 Nov to 1 Dec 2026 (15 days)");
-    expect(c.cover).toEqual({ jobLines: 270, feedReady: 260, feedMissing: 0, needDrums: 10 });
+    expect(c.cover).toEqual({ jobLines: 270, feedReady: 260, feedMissing: 0, sameDay: 0, needDrums: 10, waitingDrums: 0 });
+    expect(c.bottleneck).toBe("Armouring 5");
   });
 
   it("gives every machine its working days, planned quantity and load", () => {
     expect(Object.fromEntries(c.machines.map((m) => [m.name, [m.workingDays.size, m.planned, m.load.short]]))).toEqual({
       WD14: [14, "–", "Normal"],
       WD17: [13, "–", "Normal"],
-      "Skip (12+7)-1": [3, "29.5 core km", "Low"],
+      "Skip (12+7)-1": [3, "29.5 core km", "LOW LOAD – works only 3 of 15 days"],
       "Skip (12+7)-2": [6, "26.0 core km", "Normal"],
       "Skip 8": [8, "98.6 core km", "Normal"],
       "Skip 10": [13, "295.0 km", "Normal"],
@@ -38,15 +39,17 @@ describe("machine production cards", () => {
       "MS-14": [4, "40.0 core km", "Normal"],
       "MS-11": [7, "58.6 core km", "Normal"],
       "MS-18": [7, "98.7 km", "Normal"],
-      "Laying 5": [15, "69.7 km", "Slowest step"],
-      "Armouring 5": [15, "53.8 km", "Normal"],
+      "Laying 5": [15, "69.7 km", "Normal"],
+      "Armouring 5": [15, "53.8 km", "BOTTLENECK"],
       "Extruder 22": [14, "179.1 core km", "Normal"],
       "Extruder 35": [9, "67.8 core km", "Normal"],
-      "Extruder 51": [0, "–", "No work"],
+      "Extruder 51": [0, "–", "NO LOAD"],
       "Extruder 52": [15, "128.6 km", "Normal"],
       "Sioplas 4": [15, "88.2 core km + 84.6 km", "Normal"],
     });
-    expect(machine("Skip (12+7)-1").load).toMatchObject({ text: "Low – works only 3 of 15 days", attention: true });
+    expect(machine("Skip (12+7)-1").load).toMatchObject({ text: "LOW LOAD – works only 3 of 15 days", tone: "low" });
+    expect(machine("Armouring 5").load.tone).toBe("bottleneck");
+    expect(machine("Extruder 51").load).toMatchObject({ tone: "none", tail: " – the labour can be utilized for some other purposes" });
   });
 
   // 28 Nov: 2.66 + 0.58 + 0.71 = 3.95, printed to one decimal as 4.0.
@@ -70,10 +73,26 @@ describe("machine production cards", () => {
     expect(arm[4]).toMatchObject({ first: false, date: "20 Nov", order: "P726Y-00208" });
   });
 
-  it("asks for drums on a line with status drum: one drum per 2.5 km", () => {
-    const drum = machine("Skip 10").jobs.find((j) => j.status === "drum")!;
-    expect(drum).toMatchObject({ date: "20 Nov", qty: "23.00 km", drums: "Drums: needs 10 drums of 48×20×28×2.25 RDSO – run only if assembled the day before" });
-    expect(machine("Skip 10").jobs.find((j) => j.status === "ok")!.drums).toBeNull();
+  it("asks for drums on a line with status drum: size and metres per drum of the order from the RM sheet", () => {
+    const plan = parseCardPlan(fixture("card-plan"));
+    const line = plan.find((r) => r.machine === "Skip 10" && r.feedStatus === "drum")!;
+    const skip = (drums: Map<string, { drumSize: string; drumKm: number }>) => productionCards(plan, new Map(), drums).machines.find((m) => m.name === "Skip 10")!.jobs;
+    // 23 km on drums of 4,000 m: 6 drums (5.75 rounded up).
+    const withDrum = skip(new Map([[line.prodOrder, { drumSize: "48×20×32×2.25", drumKm: 4 }]]));
+    expect(withDrum.find((j) => j.status === "drum")).toMatchObject({ date: "20 Nov", qty: "23.00 km", drums: "Drums: needs 6 drums of 48×20×32×2.25 (4,000 m) from the yard that day – run only if assembled the day before" });
+    expect(withDrum.find((j) => j.status === "ok")!.drums).toBeNull();
+    // No drum in the RM sheet: no count, Samrat to fill.
+    expect(skip(new Map()).find((j) => j.status === "drum")!.drums).toBe("Drums: Drum size not in RM Requirement sheet – Samrat to fill");
+  });
+
+  it("makes an ACSR line wait when its drums are held up on the assembly card (rule 11)", () => {
+    const plan = parseCardPlan(fixture("card-plan"));
+    const drumLine = plan.find((r) => r.machine === "Skip 10" && r.feedStatus === "drum")!;
+    const w = productionCards(plan, new Map([[`${drumLine.prodOrder}|${drumLine.day}`, 4]]));
+    expect(w.cover.waitingDrums).toBe(1);
+    expect(w.machines.find((m) => m.name === "Skip 10")!.jobs.find((j) => j.status === "drum" && j.order === drumLine.prodOrder && j.drums?.startsWith("Waiting"))!.drums).toBe(
+      "Waiting for drums – 4 short (not in stock, cannot be assembled the day before)",
+    );
   });
 
   it("totals the raw material per machine and for all machines", () => {

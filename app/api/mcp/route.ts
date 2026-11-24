@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { changedOutside } from "@/lib/cached";
 import { originOf, verify } from "@/lib/mcp/oauth";
 import { handleRpc } from "@/lib/mcp/server";
 
@@ -6,7 +7,7 @@ import { handleRpc } from "@/lib/mcp/server";
 export async function POST(req: Request) {
   const claims = verify(req.headers.get("authorization")?.replace(/^Bearer /i, ""), "access");
   // Looked up on every call, so taking away the admin role cuts the connection at once.
-  const user = claims && (await db.user.findUnique({ where: { id: claims.sub }, select: { role: true } }));
+  const user = claims && (await db.user.findUnique({ where: { id: claims.sub }, select: { role: true, email: true } }));
   if (user?.role !== "admin") {
     return new Response(null, {
       status: 401,
@@ -20,7 +21,9 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 });
   }
-  const reply = await handleRpc(msg, db);
+  const reply = await handleRpc(msg, db, `MCP ${user.email}`);
+  // Tools can change lots, orders and rules; calls are few, so any call clears the pages' cached reads.
+  changedOutside();
   return reply ? Response.json(reply) : new Response(null, { status: 202 });
 }
 

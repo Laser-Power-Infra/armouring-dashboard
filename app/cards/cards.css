@@ -94,6 +94,12 @@
   .sm { font-size: 7.4pt; color: #555; }
   .sec { color: #c2410c; font-weight: bold; }
   div.sec { font-size: 7.4pt; }
+  /* Machine load (rule 28): violet no load, blue low load, red bottleneck, white normal. */
+  .load-none { background: #ede9fe; color: #5b21b6; font-weight: bold; }
+  .load-low { background: #dbeafe; color: #1e40af; font-weight: bold; }
+  .load-bottleneck { background: #fee2e2; color: #b91c1c; font-weight: bold; }
+  /* Small cable on Extruder 52 that may go to Extruder 51 (rule 19). */
+  tr.ask51 td { background: #fef9c3; }
   .num { text-align: right !important; font-weight: bold; white-space: nowrap; }
   td.c { text-align: center; white-space: nowrap; font-weight: bold; color: #1c3a6b; }
   td.badc { background: #c2410c; color: #fff; }

@@ -43,6 +43,8 @@ export type DrumNeedRow = {
   readyBy: Day;
   late: boolean;
   drumSize: string;
+  /** RM Drum code; null on issues from before 24-Nov-26 (matched by size) and on an order with no drum size. */
+  drumCode: string | null;
   drumsNeeded: number;
   fromStock: number;
   toAssemble: number;
@@ -57,6 +59,7 @@ export type DrumAssemblyRow = {
   assembleBy: Day;
   was: Day | null;
   drumSize: string;
+  drumCode: string | null;
   drums: number;
   flangesNeeded: number;
   flangesFrom: string;
@@ -65,7 +68,8 @@ export type DrumAssemblyRow = {
   lot: string;
   usedOn: Day;
 };
-export type DrumStockRow = { sizeKey: string; drumSize: string; drums: number | null; flangesKgp: number | null; flangesPp: number | null };
+/** `drumCode` is S7 A; issues from before 24-Nov-26 hold the size key there. */
+export type DrumStockRow = { drumCode: string; drumSize: string; drums: number | null; flangesKgp: number | null; flangesPp: number | null };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const iso = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -93,6 +97,8 @@ export function parseDay(v: unknown): { day: Day; late: boolean; was: Day | null
  * A note in brackets ("(250 m packing)") is not part of the size.
  */
 export const sizeKey = (s: string) => s.toLowerCase().replace(/\(.*?\)/g, "").replace(/×/g, "x").replace(/[\s-]/g, "");
+/** The Drum Stock row a drum row draws on: its drum code, or (issues from before 24-Nov-26) its size key. */
+export const codeOf = (r: { drumCode: string | null; drumSize: string }) => r.drumCode ?? sizeKey(r.drumSize);
 
 /**
  * Issue date and revision number from the version text. When the text has no year, the issue date is the one
@@ -181,7 +187,7 @@ export function parseDrumNeed(values: unknown[][]): DrumNeedRow[] {
   }).map((r, rowNo) => {
     const ready = parseDay(r.readyBy);
     return {
-      version: str(r.version), rowNo, usedOn: parseDay(r.usedOn).day, readyBy: ready.day, late: ready.late, drumSize: str(r.drumSize),
+      version: str(r.version), rowNo, usedOn: parseDay(r.usedOn).day, readyBy: ready.day, late: ready.late, drumSize: str(r.drumSize), drumCode: null,
       drumsNeeded: num(r.drumsNeeded, "FG drum need, Drums needed"), fromStock: num(r.fromStock, "FG drum need, From stock"),
       toAssemble: num(r.toAssemble, "FG drum need, To assemble"), prodOrder: str(r.prodOrder), partyCable: str(r.partyCable), lot: str(r.lot), note: str(r.note) || null,
     };
@@ -195,18 +201,23 @@ export function parseDrumAssembly(values: unknown[][]): DrumAssemblyRow[] {
   }).map((r, rowNo) => {
     const by = parseDay(r.assembleBy);
     return {
-      version: str(r.version), rowNo, assembleBy: by.day, was: by.was, drumSize: str(r.drumSize), drums: num(r.drums, "Drum assembly, Drums to make"),
+      version: str(r.version), rowNo, assembleBy: by.day, was: by.was, drumSize: str(r.drumSize), drumCode: null, drums: num(r.drums, "Drum assembly, Drums to make"),
       flangesNeeded: num(r.flangesNeeded, "Drum assembly, Flanges needed"), flangesFrom: str(r.flangesFrom), prodOrder: str(r.prodOrder),
       partyCable: str(r.partyCable), lot: str(r.lot), usedOn: parseDay(r.usedOn).day,
     };
   });
 }
 
-/** Stock cells the plant has not filled ("", "enter stock", "(shared)") are unknown, not zero. */
-export function parseDrumStock(values: unknown[][]): DrumStockRow[] {
+/**
+ * Stock cells the plant has not filled ("", "enter stock", "(shared)") are unknown, not zero. `byCode` (S7 for a build,
+ * 24-Nov update): rows are keyed by "Drum code" and a row without one is skipped. Otherwise (the card tabs of issues
+ * loaded from the sheet, whose drum rows have no codes) by the size.
+ */
+export function parseDrumStock(values: unknown[][], byCode = false): DrumStockRow[] {
   return rows(values, {
-    drumSize: h("Drum size"), drums: opt("Current stock"), flangesKgp: opt("Flange stock KHARAGPUR"), flangesPp: opt("Flange stock POLY PARK"),
+    code: byCode ? h("Drum code") : opt("Drum code"), drumSize: h("Drum size"), drums: opt("Current stock"), flangesKgp: opt("Flange stock KHARAGPUR"), flangesPp: opt("Flange stock POLY PARK"),
   })
-    .filter((r) => str(r.drumSize) && str(r.drumSize).toUpperCase() !== "TOTAL")
-    .map((r) => ({ sizeKey: sizeKey(str(r.drumSize)), drumSize: str(r.drumSize), drums: numOrNull(r.drums), flangesKgp: numOrNull(r.flangesKgp), flangesPp: numOrNull(r.flangesPp) }));
+    .map((r) => Object.assign(r, { code: byCode ? str(r.code) : sizeKey(str(r.drumSize)) }))
+    .filter((r) => r.code && str(r.drumSize) && str(r.drumSize).toUpperCase() !== "TOTAL")
+    .map((r) => ({ drumCode: r.code, drumSize: str(r.drumSize), drums: numOrNull(r.drums), flangesKgp: numOrNull(r.flangesKgp), flangesPp: numOrNull(r.flangesPp) }));
 }

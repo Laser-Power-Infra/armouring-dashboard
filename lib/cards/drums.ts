@@ -1,22 +1,22 @@
 // Cards 3 and 4, finished-goods drums: figures from the FG drum need, Drum assembly and Drum stock rows
-// (Card 3 guide v4 and Card 4 guide v1, sections 4.2 and 4.3).
+// (Card 3 guide v4 and Card 4 guide v1, sections 4.2 and 4.3, with the drum size source update of 24-Nov-26).
 import { addDays, ddMonYy, dMon, weeks, type CalCell } from "./calendar.ts";
-import { sizeKey, type Day, type DrumAssemblyRow, type DrumNeedRow, type DrumStockRow } from "./sheet.ts";
+import { codeOf, type Day, type DrumAssemblyRow, type DrumNeedRow, type DrumStockRow } from "./sheet.ts";
 
 export const DRUM_DAYS = 15;
-const UNKNOWN = "Size not known";
 const RACCOON_REMARK = "Bare conductor – wound straight on this drum";
-const GIVE_SIZE = "Plant to give the drum size";
-
+/** Drum size text of an order with no drum in the RAW MATERIALS REQUIREMENT sheet (24-Nov update). */
+export const MISSING = "Drum size not in RM Requirement sheet – Samrat to fill";
 /**
- * The plant has not given a drum size for the order: "SIZE TO CONFIRM" in the sheet, or any text without
- * dimensions in it ("TBC", "-"). A real size reads like 84×35×38×3.
+ * An order with no drum size: the build stores one row of 0 drums with no drum code, so the card can list it (Needs
+ * action c, compare table). Its drums are not counted anywhere. Issues from before 24-Nov-26 have no drum codes: there
+ * a size text with no dimensions in it ("SIZE TO CONFIRM", "Size not known") is the same.
  */
-export const sizeLabel = (size: string) => (/to confirm/i.test(size) || !/\d\s*[x×]\s*\d/i.test(size) ? { text: UNKNOWN, known: false } : { text: size, known: true });
+const missing = (r: { drumCode: string | null; drumSize: string }) => !r.drumCode && (/to confirm/i.test(r.drumSize) || !/\d\s*[x×]\s*\d/i.test(r.drumSize));
+/** "48×20×32×2.25 (SP0400062)"; issues from before 24-Nov-26 have no drum code. */
+const named = (r: { drumSize: string; drumCode: string | null }) => (r.drumCode ? `${r.drumSize} (${r.drumCode})` : r.drumSize);
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-/** First number of a drum size: its flange diameter in inches. */
-const inches = (size: string) => /^\s*(\d+)/.exec(size)?.[1] ?? "";
 const party = (partyCable: string) => partyCable.split(" · ")[0];
 
 type Used = { partyCable: string; note?: string | null; usedOn: Day };
@@ -27,46 +27,55 @@ const raccoonOn = (r: Used) => /^(.+): Bare conductor/.exec(r.note ?? "")?.[1] ?
 const usedOn = (r: Used) => `${raccoonOn(r) ?? "Outer sheath"}, ${dMon(r.usedOn)}`;
 
 type Stock = Map<string, DrumStockRow>;
-const stockMap = (stock: DrumStockRow[]): Stock => new Map(stock.map((s) => [s.sizeKey, s]));
+const stockMap = (stock: DrumStockRow[]): Stock => new Map(stock.map((s) => [s.drumCode, s]));
 
 /**
- * What to tell the plant when a size cannot be made for want of flanges: `from`, `problem` and `todo` are the
- * Card 4 texts (guide 4.1 and 4.3 step 6), `need` is the "What to do" of Card 3 (guide 4.3 step 7b).
+ * Where `needed` flanges of a size come from (rule 10): Kharagpur first, then Poly Park, and what is still short is
+ * bought. `problem` / `todo` are the "Needs action" texts of Cards 3 and 4; `buy` > 0 is printed as BUY in red.
  */
-function flangeAdvice(size: string, stock: Stock, forWhom = "") {
-  const s = stock.get(sizeKey(size));
-  const n = inches(size);
-  if (!sizeLabel(size).known) return { from: UNKNOWN, problem: "Drum size not given for the order", todo: "Plant to give the drum size for each order", need: "Plant to give the drum size for each order" };
-  if (!s) return { from: "Not in the Drum Stock sheet", problem: `${size} is not in the Drum Stock sheet`, todo: "Plant to give stock and flanges", need: `Plant to give stock and flanges of ${size}` };
-  if (s.flangesKgp === null) return { from: "To confirm", problem: `${size} flanges to confirm`, todo: "Confirm flanges", need: `Confirm ${size} flanges` };
-  const pp = s.flangesPp ? s.flangesPp.toLocaleString("en-IN") : null;
-  const inch = n ? `${n}″ ` : "";
-  const shift = pp ? `Shift ${inch}flanges from Poly Park (${pp} there)` : "Arrange flanges";
-  if (n === "84") return { from: "No flanges – to be bought", problem: "No 84″ flanges at Kharagpur", todo: "Buy 84″ flanges, or decide another drum size", need: "Buy 84″ flanges, or decide another drum size" };
-  if (n === "70") return { from: "No flanges – buy 2, or use a complete 70″ drum", problem: "No 70″ flanges at Kharagpur", todo: "Buy 2 flanges, or use a complete 70″ drum from the yard", need: "Buy 2 flanges, or use a complete 70″ drum from the yard" };
-  if (n === "36") return { from: `Poly Park (only ${s.flangesKgp} at Kharagpur)`, problem: `Only ${s.flangesKgp} flanges at Kharagpur`, todo: `Shift flanges from Poly Park (${pp ?? 0} there)`, need: shift };
-  return { from: pp ? `Shift from Poly Park (${pp} there)` : "Not enough at Kharagpur", problem: `Kharagpur ${inch}flanges (${s.flangesKgp}) not enough for ${forWhom}`, todo: shift, need: shift };
+function flangeAdvice(drum: { drumSize: string; drumCode: string | null }, stock: Stock, needed: number) {
+  const size = drum.drumSize;
+  const s = stock.get(codeOf(drum));
+  if (!s) return { kgp: 0, pp: 0, buy: 0, blocked: true, problem: `${named(drum)} is not in the Drum Stock sheet`, todo: "Plant to give stock and flanges" };
+  if (s.flangesKgp === null) return { kgp: 0, pp: 0, buy: 0, blocked: true, problem: `${size} flanges at Kharagpur to confirm`, todo: `Confirm ${size} flanges` };
+  const kgp = Math.min(s.flangesKgp, needed);
+  const pp = Math.min(s.flangesPp ?? 0, needed - kgp);
+  const buy = needed - kgp - pp;
+  const todo = [pp > 0 && `Shift ${plural(pp, "flange", "flanges")} from Poly Park`, buy > 0 && `BUY ${plural(buy, "flange", "flanges")}`].filter(Boolean).join(", then ");
+  return { kgp, pp, buy, blocked: false, problem: `${plural(needed, "flange", "flanges")} needed: Kharagpur has ${s.flangesKgp}, Poly Park ${s.flangesPp ?? 0}`, todo: todo || "Flanges at Kharagpur" };
 }
 
-export type HeldRow = DrumAssemblyRow & { held: boolean; flangesFrom: string };
+export type HeldRow = DrumAssemblyRow & { held: boolean; flangesFrom: string; buy: number };
 
 /**
- * The flange check (Card 4 guide 4.1): a drum is held up when its size is not known, is not in the Drum Stock
- * sheet, or Kharagpur has too few flanges left for it. Flanges are used up in the order the drums are to be
- * made, by held-up rows too.
+ * The flange check (rule 10): complete drums from stock are already taken off; each drum to assemble needs 2 flanges,
+ * taken from Kharagpur first, then Poly Park, in the order the drums are to be made. What is still short is to be
+ * bought, and holds the drum up, as does a size not known or not in the Drum Stock sheet.
  */
 export function heldUp(rows: DrumAssemblyRow[], stock: DrumStockRow[]): HeldRow[] {
   const byKey = stockMap(stock);
-  const left = new Map<string, number>();
+  const left = new Map<string, { kgp: number; pp: number }>();
   return [...rows]
     .sort((a, b) => a.assembleBy.localeCompare(b.assembleBy) || a.rowNo - b.rowNo)
     .map((r) => {
-      const key = sizeKey(r.drumSize);
-      const have = sizeLabel(r.drumSize).known ? (left.get(key) ?? byKey.get(key)?.flangesKgp ?? null) : null;
-      const held = have === null || have < r.flangesNeeded;
-      if (have !== null) left.set(key, Math.max(0, have - r.flangesNeeded));
-      return { ...r, held, flangesFrom: held ? flangeAdvice(r.drumSize, byKey).from : "Kharagpur stock" };
+      const key = codeOf(r);
+      const s = byKey.get(key);
+      if (!s || s.flangesKgp === null) return { ...r, held: true, buy: 0, flangesFrom: !s ? "Not in the Drum Stock sheet" : "To confirm" };
+      const have = left.get(key) ?? { kgp: s.flangesKgp, pp: s.flangesPp ?? 0 };
+      const kgp = Math.min(have.kgp, r.flangesNeeded);
+      const pp = Math.min(have.pp, r.flangesNeeded - kgp);
+      const buy = r.flangesNeeded - kgp - pp;
+      left.set(key, { kgp: have.kgp - kgp, pp: have.pp - pp });
+      const from = [kgp > 0 && `Kharagpur ${kgp}`, pp > 0 && `Poly Park ${pp} (shift)`, buy > 0 && `BUY ${buy}`].filter(Boolean).join(" + ");
+      return { ...r, held: buy > 0, buy, flangesFrom: kgp === r.flangesNeeded ? "Kharagpur stock" : from };
     });
+}
+
+/** Rule 32: a row against the issue this one replaces – "new", "same", or "was n". */
+export function versus(prev: Map<string, number> | null, key: string, n: number) {
+  if (!prev) return null;
+  const was = prev.get(key);
+  return was === undefined ? "new" : was === n ? "same" : `was ${was}`;
 }
 
 export type DrumCell = CalCell & { tone: "work" | "shortd" | "idle"; n: number; text: string };
@@ -74,18 +83,19 @@ const firstSeen = <T>(rows: T[], key: (r: T) => string) => [...new Set(rows.map(
 const allAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? ""));
 /** The drum need rows a card shows, in the row order of the guide. */
 const inCard = (need: DrumNeedRow[], d0: Day) =>
-  need.filter((r) => r.drumsNeeded > 0 && r.readyBy <= addDays(d0, DRUM_DAYS - 1)).sort((a, b) => a.readyBy.localeCompare(b.readyBy) || a.rowNo - b.rowNo);
+  need.filter((r) => (r.drumsNeeded > 0 || missing(r)) && r.readyBy <= addDays(d0, DRUM_DAYS - 1)).sort((a, b) => a.readyBy.localeCompare(b.readyBy) || a.rowNo - b.rowNo);
 
 // ── Card 4: KGP Drum Assembly Card ───────────────────────────────────────
 /** `need` is the drum need of the same issue: it tells which machine a Raccoon drum goes on. */
 export function drumAssemblyCard(assembly: DrumAssemblyRow[], stock: DrumStockRow[], d0: Day, need: DrumNeedRow[] = []) {
   const last = addDays(d0, DRUM_DAYS - 1);
-  const rows = heldUp(assembly.filter((r) => r.drums > 0 && r.assembleBy <= last), stock);
+  // Orders with no drum size never reach this card: Card 3 lists them.
+  const rows = heldUp(assembly.filter((r) => r.drums > 0 && r.assembleBy <= last && !missing(r)), stock);
   const byKey = stockMap(stock);
   const sum = (list: HeldRow[]) => list.reduce((s, r) => s + r.drums, 0);
   const byDay = Map.groupBy(rows, (r) => r.assembleBy);
   const held = rows.filter((r) => r.held);
-  const keyOf = (r: HeldRow) => sizeKey(sizeLabel(r.drumSize).known ? r.drumSize : UNKNOWN);
+  const keyOf = codeOf;
   const noteOf = new Map(need.map((r) => [`${r.prodOrder}|${r.usedOn}`, r.note]));
 
   return {
@@ -109,19 +119,22 @@ export function drumAssemblyCard(assembly: DrumAssemblyRow[], stock: DrumStockRo
     cannot: firstSeen(held, keyOf).map((key) => {
       const of = held.filter((r) => keyOf(r) === key);
       // Every row of the size, held up or not: they all draw on the same flanges.
-      const advice = flangeAdvice(of[0].drumSize, byKey, allAnd(firstSeen(rows.filter((r) => keyOf(r) === key), (r) => party(r.partyCable))));
-      return { size: sizeLabel(of[0].drumSize).text, known: sizeLabel(of[0].drumSize).known, drums: sum(of), problem: advice.problem, todo: advice.todo };
+      const all = rows.filter((r) => keyOf(r) === key);
+      const advice = flangeAdvice(of[0], byKey, all.reduce((s, r) => s + r.flangesNeeded, 0));
+      return { code: key, size: of[0].drumSize, known: true, drums: sum(of), problem: `${advice.problem} (for ${allAnd(firstSeen(all, (r) => party(r.partyCable)))})`, todo: advice.todo, buy: advice.buy };
     }),
     rows: rows.map((r, i) => ({
       first: i === 0 || rows[i - 1].assembleBy !== r.assembleBy,
       makeBy: dMon(r.assembleBy),
       dayTotal: `${sum(byDay.get(r.assembleBy)!)} drums`,
-      size: sizeLabel(r.drumSize),
+      size: { text: r.drumSize, known: true },
       late: !!r.was,
       drums: r.drums,
       flanges: r.flangesNeeded,
       flangesFrom: r.flangesFrom,
+      buy: r.buy,
       held: r.held,
+      key: `${r.prodOrder}|${r.usedOn}`,
       partyCable: r.partyCable,
       orderLot: `${r.prodOrder} · ${r.lot}`,
       usedOn: usedOn({ ...r, note: noteOf.get(`${r.prodOrder}|${r.usedOn}`) }),
@@ -133,46 +146,47 @@ export function drumAssemblyCard(assembly: DrumAssemblyRow[], stock: DrumStockRo
 // ── Card 3: KGP Finished Goods Drum Requirement Card ─────────────────────
 export function drumRequirementCard(need: DrumNeedRow[], stock: DrumStockRow[], d0: Day) {
   const last = addDays(d0, DRUM_DAYS - 1);
-  const rows = inCard(need, d0);
+  const shown = inCard(need, d0);
+  // An order with no drum size is listed under Needs action, but its drums are not counted anywhere.
+  const rows = shown.filter((r) => !missing(r));
   const byKey = stockMap(stock);
   const isLate = (r: DrumNeedRow) => r.readyBy < d0;
   const late = rows.filter(isLate);
   const tot = (list: DrumNeedRow[], f: (r: DrumNeedRow) => number) => list.reduce((s, r) => s + f(r), 0);
   const needed = (r: DrumNeedRow) => r.drumsNeeded;
   const make = (r: DrumNeedRow) => r.toAssemble;
-  const keyOf = (r: DrumNeedRow) => (sizeLabel(r.drumSize).known ? sizeKey(r.drumSize) : UNKNOWN);
+  const keyOf = codeOf;
   const byDay = Map.groupBy(rows.filter((r) => !isLate(r)), (r) => r.readyBy);
 
   const bySize = firstSeen(rows, keyOf).map((key) => {
     const of = rows.filter((r) => keyOf(r) === key);
-    const label = sizeLabel(of[0].drumSize);
     const toMake = tot(of, make);
-    // Guide 4.2: a flange stock that is not a number counts as 0; "Size not known" shows "–".
-    const flangesKgp = label.known ? (byKey.get(key)?.flangesKgp ?? 0) : null;
-    return { size: label.text, known: label.known, raw: of[0].drumSize, needed: tot(of, needed), inStock: tot(of, (r) => r.fromStock), toMake, flangesNeeded: toMake * 2, flangesKgp, flangesShort: flangesKgp !== null && flangesKgp < toMake * 2 };
+    // Guide 4.2: a flange stock that is not a number, or a drum code not in the Drum Stock sheet, counts as 0.
+    const flangesKgp: number | null = byKey.get(key)?.flangesKgp ?? 0;
+    return { code: key, size: of[0].drumSize, known: true, raw: of[0], needed: tot(of, needed), inStock: tot(of, (r) => r.fromStock), toMake, flangesNeeded: toMake * 2, flangesKgp, flangesShort: flangesKgp !== null && flangesKgp < toMake * 2 };
   });
 
   const before = `needed before ${dMon(d0)}`;
-  const unknown = rows.filter((r) => !sizeLabel(r.drumSize).known);
+  const unknown = shown.filter(missing);
 
-  // More flanges needed than Kharagpur has.
+  // More flanges needed than Kharagpur has: shift from Poly Park, then BUY.
   const flangeRows = bySize
     .filter((s) => s.flangesShort)
-    .map((s) => ({
-      size: s.size,
-      known: true,
-      problem: `${plural(s.toMake, "drum", "drums")} to be made ${s.toMake === 1 ? "needs" : "need"} ${plural(s.flangesNeeded, "flange", "flanges")}. Kharagpur has only ${s.flangesKgp}`,
-      todo: flangeAdvice(s.raw, byKey).need,
-    }));
+    .map((s) => {
+      const advice = flangeAdvice(s.raw, byKey, s.flangesNeeded);
+      // Guide 4.3 step 7b, first case: a drum code not in the Drum Stock sheet.
+      const todo = byKey.has(s.code) ? advice.todo : `${advice.problem} – plant to give stock and flanges`;
+      return { size: s.size, known: true, problem: `${plural(s.toMake, "drum", "drums")} to be made: ${advice.problem}`, todo, buy: advice.buy };
+    });
   // Late and not in stock: the drum team makes these first.
   const lateRows = firstSeen(late.filter((r) => make(r) > 0), keyOf).map((key) => {
     const of = late.filter((r) => keyOf(r) === key && make(r) > 0);
     const n = tot(of, make);
-    return { size: sizeLabel(of[0].drumSize).text, known: sizeLabel(of[0].drumSize).known, problem: `${plural(n, "drum", "drums")} should already be ready (${before}) and ${n === 1 ? "is" : "are"} not in stock`, todo: "Drum team to assemble these first" };
+    return { size: of[0].drumSize, known: true, problem: `${plural(n, "drum", "drums")} should already be ready (${before}) and ${n === 1 ? "is" : "are"} not in stock`, todo: "Drum team to assemble these first", buy: 0 };
   });
   const orders = [...new Map(unknown.map((r) => [r.prodOrder, `${r.prodOrder} ${party(r.partyCable)}`])).entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, text]) => text);
   const unknownRows = unknown.length
-    ? [{ size: UNKNOWN, known: false, problem: `${plural(tot(unknown, needed), "drum", "drums")} for ${plural(orders.length, "order", "orders")} have no drum size: ${orders.join(", ")}`, todo: "Plant to give the drum size for each order" }]
+    ? [{ size: MISSING, known: false, problem: `${plural(orders.length, "order", "orders")}: ${orders.join(", ")}`, todo: "Samrat to fill the drum code for these contracts in the RAW MATERIALS REQUIREMENT sheet", buy: 0 }]
     : [];
 
   return {
@@ -196,15 +210,15 @@ export function drumRequirementCard(need: DrumNeedRow[], stock: DrumStockRow[], 
     bySize,
     total: { needed: tot(rows, needed), inStock: tot(rows, (r) => r.fromStock), toMake: tot(rows, make), flanges: tot(rows, make) * 2 },
     rows: rows.map((r, i) => {
-      const label = sizeLabel(r.drumSize);
       const group = isLate(r) ? "late" : r.readyBy;
       const prev = i > 0 ? (isLate(rows[i - 1]) ? "late" : rows[i - 1].readyBy) : null;
-      const remark = raccoonOn(r) ? RACCOON_REMARK : label.known ? (r.note ?? "") : GIVE_SIZE;
+      const remark = raccoonOn(r) ? RACCOON_REMARK : (r.note ?? "");
       return {
         first: group !== prev,
         late: isLate(r),
         readyBy: dMon(r.readyBy),
-        size: label,
+        size: { text: r.drumSize, known: true },
+        key: `${r.prodOrder}|${r.usedOn}`,
         needed: r.drumsNeeded,
         fromStock: r.fromStock,
         toMake: r.toAssemble,
@@ -212,7 +226,7 @@ export function drumRequirementCard(need: DrumNeedRow[], stock: DrumStockRow[], 
         orderLot: `${r.prodOrder} · ${r.lot}`,
         usedOn: usedOn(r),
         remark,
-        remarkAttention: remark === GIVE_SIZE,
+        remarkAttention: /plant to confirm/i.test(remark),
       };
     }),
   };
@@ -247,8 +261,7 @@ export function drumChanges(issue: Version & { issueNote: string }, prev: Versio
       const mine = now.filter((r) => r.prodOrder === prodOrder);
       const theirs = was.filter((r) => r.prodOrder === prodOrder);
       const one = mine[0] ?? theirs[0];
-      const size = sizeLabel(one.drumSize);
-      return { order: `${one.partyCable} (${prodOrder.slice(-3)})`, size: size.text.split(" +")[0], known: size.known, prev: cell(theirs, prev.d0), now: cell(mine, issue.d0) };
+      return { order: `${one.partyCable} (${prodOrder.slice(-3)})`, size: missing(one) ? MISSING : one.drumSize.split(" +")[0], known: !missing(one), prev: cell(theirs, prev.d0), now: cell(mine, issue.d0) };
     }),
   };
 }

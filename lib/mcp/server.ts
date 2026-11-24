@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { approveLot, changeClub } from "../club/club.ts";
 import { Prisma, type PrismaClient } from "../generated/prisma/client.ts";
 
 // The MCP server: MD sir's rules (read and write) and the synced data (read only). JSON-RPC over one POST, no session, no streaming.
@@ -8,6 +9,7 @@ import { Prisma, type PrismaClient } from "../generated/prisma/client.ts";
 const DATA = {
   club_lots: { model: "kgpLot", about: "Club & Run sheet, Lots tab: each clubbed lot, run order, MD approval, balances", fields: Prisma.KgpLotScalarFieldEnum },
   club_orders: { model: "kgpOrder", about: "Club & Run sheet, Orders tab: each order, its lot, stage balances, remarks", fields: Prisma.KgpOrderScalarFieldEnum },
+  club_changes: { model: "clubChange", about: "Log of every change to a Club & Run lot or order: who, when, old value, new value", fields: Prisma.ClubChangeScalarFieldEnum },
   sfg_order_lines: { model: "kgpOrderLine", about: "SFG dashboard: each order's semi-finished lines per stage, with net, done and balance qty", fields: Prisma.KgpOrderLineScalarFieldEnum },
   bom_lines: { model: "bomLine", about: "SFG dashboard: material per item (kg per km) for each SFG BOM", fields: Prisma.BomLineScalarFieldEnum },
   rm_stock: { model: "rmStock", about: "RM Control: raw material quantity for planning", fields: Prisma.RmStockScalarFieldEnum },
@@ -34,7 +36,8 @@ const INSTRUCTIONS =
   "list_rules also returns `rulesets`, whose `how_to_read` explains how to read `details`. `summary` is only a short note for finding a rule. " +
   "A rule is never edited in place: update_rule stores the new wording and keeps the old one as replaced; delete_rule only marks a rule deleted. " +
   "The synced data (Club & Run, SFG, stock, cards) is read through list_data and read_data. " +
-  "Only Club & Run planning fields can be changed (update_club_lot, update_club_order), and only in our copy: the next sync from the sheet overwrites them.";
+  "Only Club & Run planning fields can be changed (update_club_lot, update_club_order); every change is logged. " +
+  "Until the cutover the next sync from the sheet overwrites them; after it the dashboard is the master and syncs never touch them.";
 
 class ToolError extends Error {}
 
@@ -58,8 +61,9 @@ const out = (r: Row) => ({
   replaced_by: r.newRuleId,
 });
 
-function tool<S extends z.ZodType>(description: string, input: S, run: (args: z.infer<S>, db: Db) => Promise<unknown>) {
-  return { description, input, run: (args: unknown, db: Db) => run(input.parse(args), db) };
+/** `by` is who called, for the change log: "MCP <admin's email>". */
+function tool<S extends z.ZodType>(description: string, input: S, run: (args: z.infer<S>, db: Db, by: string) => Promise<unknown>) {
+  return { description, input, run: (args: unknown, db: Db, by: string) => run(input.parse(args), db, by) };
 }
 
 /** In force: neither replaced nor deleted. */
@@ -151,39 +155,54 @@ export const TOOLS = {
   ),
   // Club & Run planning fields, written to our tables only. Balances and calculated columns (CR-C-16) are not writable.
   update_club_lot: tool(
-    "Change planning fields of one Club & Run lot in our database. Our copy only: the next sync from the Club & Run sheet overwrites it. " +
-      "Run order and Approved by MD are the MD's decision (rules CR-C-12, CR-C-13, CR-E-34): change them only on his word.",
+    "Change planning fields of one Club & Run lot. Logged. Until the cutover the next sync from the sheet overwrites it. " +
+      "Run order is the MD's decision (rules CR-C-12, CR-E-34): change it only on his word. To approve a lot use approve_lot.",
     z.strictObject({
       lot_no: z.string().trim().min(1).max(40).describe("The lot to change, e.g. PL-001"),
       run_order: z.int().min(1).optional().describe("Run order, 1 = first"),
-      approved_by_md: z.boolean().optional(),
       sent_to_plant: z.boolean().optional(),
       status: z.string().trim().max(100).nullable().optional(),
       remarks: z.string().trim().max(2000).nullable().optional(),
       what_clubbed: z.string().trim().max(2000).nullable().optional().describe("What is clubbed in the lot"),
     }),
-    async ({ lot_no, run_order, approved_by_md, sent_to_plant, status, remarks, what_clubbed }, db) => {
-      const data = { runOrder: run_order, approvedByMd: approved_by_md, sentToPlant: sent_to_plant, status, remarks, whatClubbed: what_clubbed };
+    async ({ lot_no, run_order, sent_to_plant, status, remarks, what_clubbed }, db, by) => {
+      const data = { runOrder: run_order, sentToPlant: sent_to_plant, status, remarks, whatClubbed: what_clubbed };
       if (Object.values(data).every((v) => v === undefined)) throw new ToolError("Nothing to change: give at least one field.");
-      const { count } = await db.kgpLot.updateMany({ where: { lotNo: lot_no }, data });
-      if (count !== 1) throw new ToolError(`No lot ${lot_no} in Club & Run.`);
+      if (!(await changeClub(db, by, "lot", lot_no, data))) throw new ToolError(`No lot ${lot_no} in Club & Run.`);
       return db.kgpLot.findUnique({ where: { lotNo: lot_no } });
     },
   ),
+  // Approved by MD has its own tools, so approving is one clear step. Only admin accounts reach any tool (route.ts).
+  approve_lot: tool(
+    "Approve one Club & Run lot (Approved by MD = yes, status Draft -> Approved). The MD's decision (CR-C-13): only on his word. Logged with the admin's email.",
+    z.strictObject({ lot_no: z.string().trim().min(1).max(40).describe("The lot to approve, e.g. PL-001") }),
+    async ({ lot_no }, db, by) => setApproval(db, by, lot_no, true),
+  ),
+  unapprove_lot: tool(
+    "Take back the MD's approval of one Club & Run lot (status back to Draft, Sent to plant cleared). Only on the MD's word. Logged with the admin's email.",
+    z.strictObject({ lot_no: z.string().trim().min(1).max(40).describe("The lot to take back, e.g. PL-001") }),
+    async ({ lot_no }, db, by) => setApproval(db, by, lot_no, false),
+  ),
   update_club_order: tool(
-    "Change planning fields of one Club & Run order in our database. Our copy only: the next sync from the Club & Run sheet overwrites it. " +
+    "Change planning fields of one Club & Run order. Logged. Until the cutover the next sync from the sheet overwrites it. " +
       "Lot No and Supply from are the MD's decision (rules CR-C-12, CR-C-14): change them only on his word.",
     z.strictObject({
       prod_order: z.string().trim().min(1).max(40).describe("The production order to change, e.g. P726Y-00235"),
       lot_no: z.string().trim().max(40).nullable().optional().describe("Lot to put the order in; null takes it out of its lot"),
       supply_from: z.string().trim().max(200).nullable().optional().describe("Manufacture / Dead stock / Old stock / Free stock"),
       remarks: z.string().trim().max(2000).nullable().optional(),
+      run_order_in_lot: z.int().min(1).nullable().optional().describe("Order inside its lot, 1 = first"),
+      on_hold: z.boolean().optional().describe("MD holds the order out of the new-order inbox"),
+      urgent: z.boolean().optional().describe("MD marks the order urgent (CR-G-40)"),
+      customer_date: z.iso.date().nullable().optional().describe("Customer's delivery date, YYYY-MM-DD"),
     }),
-    async ({ prod_order, lot_no, supply_from, remarks }, db) => {
-      const data = { lotNo: lot_no, supplyFrom: supply_from, remarks };
+    async ({ prod_order, lot_no, supply_from, remarks, run_order_in_lot, on_hold, urgent, customer_date }, db, by) => {
+      const data = {
+        lotNo: lot_no, supplyFrom: supply_from, remarks, runOrderInLot: run_order_in_lot, onHold: on_hold, urgent,
+        customerDate: customer_date === undefined ? undefined : customer_date === null ? null : new Date(customer_date),
+      };
       if (Object.values(data).every((v) => v === undefined)) throw new ToolError("Nothing to change: give at least one field.");
-      const { count } = await db.kgpOrder.updateMany({ where: { prodOrder: prod_order }, data });
-      if (count !== 1) throw new ToolError(`No order ${prod_order} in Club & Run.`);
+      if (!(await changeClub(db, by, "order", prod_order, data))) throw new ToolError(`No order ${prod_order} in Club & Run.`);
       return db.kgpOrder.findUnique({ where: { prodOrder: prod_order } });
     },
   ),
@@ -217,13 +236,19 @@ export const TOOLS = {
   ),
 };
 
+async function setApproval(db: Db, by: string, lotNo: string, approve: boolean) {
+  const why = await approveLot(db, by, lotNo, approve);
+  if (why) throw new ToolError(why);
+  return db.kgpLot.findUnique({ where: { lotNo } });
+}
+
 const text = (s: string, isError = false) => ({ content: [{ type: "text", text: s }], ...(isError ? { isError } : {}) });
 
-async function callTool(params: { name?: string; arguments?: unknown }, db: Db) {
+async function callTool(params: { name?: string; arguments?: unknown }, db: Db, by: string) {
   const t = TOOLS[params.name as keyof typeof TOOLS];
   if (!t) return null;
   try {
-    return text(JSON.stringify(await t.run(params.arguments ?? {}, db)));
+    return text(JSON.stringify(await t.run(params.arguments ?? {}, db, by)));
   } catch (e) {
     if (e instanceof z.ZodError) return text(z.prettifyError(e), true);
     if (e instanceof ToolError) return text(e.message, true);
@@ -233,7 +258,7 @@ async function callTool(params: { name?: string; arguments?: unknown }, db: Db) 
 }
 
 /** One JSON-RPC message in, its reply out. null when the message needs no reply (a notification). */
-export async function handleRpc(msg: unknown, db: Db) {
+export async function handleRpc(msg: unknown, db: Db, by = "MCP") {
   const m = (msg ?? {}) as { id?: string | number; method?: unknown; params?: Record<string, unknown> };
   const reply = (body: object): Record<string, unknown> => ({ jsonrpc: "2.0", id: m.id ?? null, ...body });
   const fail = (code: number, message: string) => reply({ error: { code, message } });
@@ -262,7 +287,7 @@ export async function handleRpc(msg: unknown, db: Db) {
         },
       });
     case "tools/call": {
-      const result = await callTool(m.params ?? {}, db);
+      const result = await callTool(m.params ?? {}, db, by);
       return result ? reply({ result }) : fail(-32602, `Unknown tool: ${String(m.params?.name)}`);
     }
     default:

@@ -1,8 +1,9 @@
+import { cachedDrums } from "@/lib/cached";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
-import { getDrums, versionLabel } from "@/lib/cards/data";
-import { drumChanges, drumRequirementCard } from "@/lib/cards/drums";
-import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { versionLabel } from "@/lib/cards/data";
+import { drumChanges, drumRequirementCard, versus } from "@/lib/cards/drums";
+import { ActionHead, Calendar, CardShell, Cols, How, loadedText, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { DrumChangesPage, VsCell } from "../_drum-changes";
 
 // Card 3, KGP Finished Goods Drum Requirement Card (build spec 8): what needs action, size-wise totals, then date by date.
 export const instant = false;
@@ -12,7 +13,7 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
   const picked = await pickIssue(searchParams);
   if (!picked) return <CardShell active="/cards/drum-requirement" picked={null} />;
   const { issue } = picked;
-  const { need, stock } = await getDrums(db, issue.id);
+  const { need, stock } = await cachedDrums(issue.id);
   // Nothing to show: the drum sheets could not be read when this version was built.
   if (!need.length)
     return (
@@ -24,12 +25,16 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
       </CardShell>
     );
   const prev = picked.issues.find((i) => i.id === issue.prevIssueId);
-  const changes = prev && drumChanges(issue, prev, need, (await getDrums(db, prev.id)).need);
+  const prevDrums = prev ? await cachedDrums(prev.id) : null;
+  const changes = prev && prevDrums && drumChanges(issue, prev, need, prevDrums.need);
   const card = drumRequirementCard(need, stock, issue.d0);
   const f = card.facts;
+  // Rule 32: drums needed per order and use date in the issue this one replaces.
+  const prevNeeded = prevDrums && new Map(drumRequirementCard(prevDrums.need, prevDrums.stock, prev!.d0).rows.map((r) => [r.key, r.needed ?? 0]));
 
   return (
     <CardShell active="/cards/drum-requirement" picked={picked} variant="drums">
+      {changes && <DrumChangesPage changes={changes} version={versionLabel(issue)} card="KGP Finished Goods Drum Requirement Card" />}
       <Sheet>
         <Top
           version={versionLabel(issue)}
@@ -44,6 +49,8 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
             ["In stock", <b key="v">{f.inStock}</b>],
             ["To be made", <span key="v"><b>{f.toMake}</b> (needs {f.flanges} flanges)</span>],
             ["How to make them", "See the Drum Assembly Card"],
+            ["Stock", `Drum Stock sheet, read ${loadedText(issue)}`],
+            ["Drum size", "By order, from the RAW MATERIALS REQUIREMENT sheet (contract and item); if not there, its drums are not counted until Samrat fills it"],
           ]}
           right={
             <>
@@ -61,27 +68,6 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
           }
         />
         <How><b>How to read this card:</b> this page shows what needs action and the totals for each drum size. The next pages list, date by date, which drums must be ready. Drums in stock are used first. Words in <Sec>this colour</Sec> need attention.</How>
-        {changes && (
-          <>
-            <How><b>{changes.name} replaces {changes.prevName}:</b> {changes.note} Drums to assemble up to {changes.upTo}: {changes.toMake} ({changes.prevName}: {changes.prevToMake}). The table compares with {changes.prevName}.</How>
-            <table className="t">
-              <Cols widths={[36, 24, 20, 20]} />
-              <thead>
-                <tr><th>Order</th><th>Drum size</th><th>{changes.prevName} – to assemble</th><th>{changes.name} – to assemble</th></tr>
-              </thead>
-              <tbody>
-                {changes.rows.map((r) => (
-                  <tr key={r.order}>
-                    <td>{r.order}</td>
-                    <td>{r.known ? r.size : <Sec>{r.size}</Sec>}</td>
-                    <td>{r.prev}</td>
-                    <td>{r.now}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
         {card.needsAction.length > 0 && (
           <>
             <ActionHead title="Needs action" cardFor="Srikant Rao" />
@@ -95,7 +81,7 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
                   <tr key={i}>
                     <td><b>{r.known ? r.size : <Sec>{r.size}</Sec>}</b></td>
                     <td className="sec">{r.problem}</td>
-                    <td>{r.todo}</td>
+                    <td className={r.buy > 0 ? "sec" : undefined}>{r.todo}</td>
                   </tr>
                 ))}
               </tbody>
@@ -118,7 +104,7 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
             </thead>
             <tbody>
               {card.bySize.map((s) => (
-                <tr key={s.size}>
+                <tr key={s.code}>
                   <td><b>{s.known ? s.size : <Sec>{s.size}</Sec>}</b></td>
                   <td className="num">{s.needed}</td>
                   <td className="num">{s.inStock}</td>
@@ -140,7 +126,7 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
         </div>
         <h3>Date by date: which drums must be ready when</h3>
         <table className="t">
-          <Cols widths={[10, 18, 7, 7, 7, 22, 12, 17]} />
+          <Cols widths={prevNeeded ? [9, 17, 7, 7, 7, 20, 11, 15, 7] : [10, 18, 7, 7, 7, 22, 12, 17]} />
           <thead>
             <tr>
               <th>Ready by</th>
@@ -151,6 +137,7 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
               <th>For which order<div className="ths">order number and lot below</div></th>
               <th>Drum is used on</th>
               <th>Remark</th>
+              {prevNeeded && <th>vs {changes!.prevName}</th>}
             </tr>
           </thead>
           <tbody>
@@ -158,12 +145,13 @@ export default async function DrumRequirementCardPage({ searchParams }: PageProp
               <tr key={i} className={r.first ? "dstart" : undefined}>
                 <td className="dt">{r.first && (r.late ? <Sec>Late – needed now</Sec> : r.readyBy)}</td>
                 <td>{r.size.known ? r.size.text : <Sec>{r.size.text}</Sec>}</td>
-                <td className="num">{r.needed}</td>
+                <td className="num">{r.needed ?? <Sec>not counted</Sec>}</td>
                 <td className="num">{r.fromStock}</td>
                 <td className={r.toMake > 0 ? "num sec" : "num"}>{r.toMake}</td>
                 <td><div>{r.partyCable}</div><div className="sm">{r.orderLot}</div></td>
                 <td>{r.usedOn}</td>
                 <td>{r.remarkAttention ? <Sec>{r.remark}</Sec> : r.remark}</td>
+                {prevNeeded && <VsCell text={versus(prevNeeded, r.key, r.needed ?? 0)!} />}
               </tr>
             ))}
           </tbody>

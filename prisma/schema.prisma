@@ -19,7 +19,7 @@ model User {
   email        String    @unique // stored lowercased
   name         String?
   passwordHash String?   @map("password_hash") // null for Google-only accounts
-  role         String    @default("viewer") // CHECK: viewer | admin
+  role         String    @default("viewer") // CHECK: viewer | plant | admin (admin = MD's rights on Club & Run)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
 
@@ -346,6 +346,7 @@ model CardDrumNeed {
   readyBy     DateTime  @map("ready_by") @db.Date
   late        Boolean   @default(false)
   drumSize    String    @map("drum_size")
+  drumCode    String?   @map("drum_code") // RM Drum code; null on issues built before 24-Nov-26, and on an order with no drum size
   drumsNeeded Int       @map("drums_needed")
   fromStock   Int       @map("from_stock")
   toAssemble  Int       @map("to_assemble")
@@ -367,6 +368,7 @@ model CardDrumAssembly {
   assembleBy    DateTime  @map("assemble_by") @db.Date
   was           DateTime? @db.Date // the date it should have been ready, when late
   drumSize      String    @map("drum_size")
+  drumCode      String?   @map("drum_code") // null on issues built before 24-Nov-26
   drums         Int
   flangesNeeded Int       @map("flanges_needed")
   flangesFrom   String    @map("flanges_from")
@@ -383,13 +385,13 @@ model CardDrumAssembly {
 model CardDrumStock {
   issueId    Int       @map("issue_id")
   issue      CardIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  sizeKey    String    @map("size_key")
+  drumCode   String    @map("drum_code") // S7 A; issues built before 24-Nov-26 hold the size key here
   drumSize   String    @map("drum_size")
   drums      Int?
   flangesKgp Int?      @map("flanges_kgp")
   flangesPp  Int?      @map("flanges_pp")
 
-  @@id([issueId, sizeKey])
+  @@id([issueId, drumCode])
   @@map("card_drum_stock")
 }
 
@@ -451,8 +453,29 @@ model KgpOrder {
   pendingFrom       String?   @map("pending_from")
   remarks           String?
   suggestedLot      String?   @map("suggested_lot")
+  toConfirm         Json?     @map("to_confirm") // SFG balances far from ours, kept until the MD accepts them
+  onHold            Boolean   @default(false) @map("on_hold") // MD: held, not to be lotted now
+  urgent            Boolean   @default(false) // MD: urgent, may join a running lot (CR-G-40)
+  customerDate      DateTime? @map("customer_date") @db.Date
+  promisedOn        DateTime? @map("promised_on") @db.Date // FG ready date given when the MD decided
+  addedAt           DateTime? @map("added_at") @db.Timestamptz // when the sync added it; null = came from the sheet
 
   @@map("kgp_orders")
+}
+
+// Every change to a Club & Run lot or order (plan of 23-Nov, Part 1.3).
+model ClubChange {
+  id       BigInt   @id @default(autoincrement())
+  at       DateTime @default(now()) @db.Timestamptz
+  by       String // user email, "MCP <email>" or "sync"
+  tbl      String // CHECK: lot | order
+  key      String // lot no or production order
+  field    String
+  oldValue String?  @map("old_value")
+  newValue String?  @map("new_value")
+
+  @@index([tbl, key])
+  @@map("club_changes")
 }
 
 model KgpOrderLine {
@@ -467,9 +490,23 @@ model KgpOrderLine {
   balance   Float
   scope     String?
   sfgBom    String? @map("sfg_bom")
+  fgItemCode String? @map("fg_item_code") // S8 Order lines N
+  contractNo String? @map("contract_no") // S8 Order lines Q
 
   @@unique([prodOrder, stage, sfgCode])
   @@map("kgp_order_lines")
+}
+
+// Card 1 guide, drum source update of 24-Nov-26: the FG drum of each production order, from the RAW MATERIALS
+// REQUIREMENT sheet (contract + FG item). An order with no drum there has no row. Used by Cards 1, 3 and 4.
+model RaccoonDrum {
+  prodOrder  String @id @map("prod_order")
+  contractNo String @map("contract_no") // S8 Order lines Q
+  drumCode   String @map("drum_code") // RM AR
+  drumSize   String @map("drum_size") // RM AS, normalised
+  drumKm     Float  @map("drum_km") // RM AO ÷ 1000
+
+  @@map("raccoon_drums")
 }
 
 model BomLine {
@@ -517,4 +554,14 @@ model MdRules {
   @@index([topic])
   @@index([code])
   @@map("md_rules")
+}
+// Expected FG ready date of each order, one snapshot a day: the plan view shows how far it moved since the day before.
+model ClubEta {
+  day       DateTime  @db.Date
+  prodOrder String    @map("prod_order")
+  fgReady   DateTime? @map("fg_ready") @db.Date
+  estimated Boolean   @default(false)
+
+  @@id([day, prodOrder])
+  @@map("club_eta")
 }

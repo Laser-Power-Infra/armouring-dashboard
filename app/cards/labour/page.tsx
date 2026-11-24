@@ -1,6 +1,6 @@
+import { cachedLabour } from "@/lib/cached";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
-import { getLabour, versionLabel } from "@/lib/cards/data";
+import { versionLabel } from "@/lib/cards/data";
 import { labourCard, type ShiftCell } from "@/lib/cards/labour";
 import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
 
@@ -12,7 +12,7 @@ export default async function LabourCardPage({ searchParams }: PageProps<"/cards
   const picked = await pickIssue(searchParams);
   if (!picked) return <CardShell active="/cards/labour" picked={null} />;
   const { issue } = picked;
-  const { labour, spare } = await getLabour(db, issue.id);
+  const { labour, spare } = await cachedLabour(issue.id);
   // Nothing to show: the men could not be placed when this version was built.
   if (!labour.length)
     return (

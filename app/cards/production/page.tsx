@@ -1,6 +1,7 @@
+import { cachedCard1Sources, cachedCardPlan, cachedDrums } from "@/lib/cached";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
-import { getCard1Sources, getCardPlan, versionLabel } from "@/lib/cards/data";
+import { issueName, versionLabel } from "@/lib/cards/data";
+import { heldUp } from "@/lib/cards/drums";
 import { MACHINE_ORDER, RUNS_WITH } from "@/lib/cards/machines";
 import { productionCards, WIN, type MachineCard, type Materials } from "@/lib/cards/production";
 import { ActionHead, Calendar, CardShell, Cols, How, loadedText, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
@@ -50,10 +51,19 @@ export default async function ProductionCardsPage({ searchParams }: PageProps<"/
   const picked = await pickIssue(searchParams);
   if (!picked) return <CardShell active="/cards/production" picked={null} />;
   const { issue } = picked;
-  const [plan, src] = await Promise.all([getCardPlan(db, issue.id), getCard1Sources(db)]);
-  const card = productionCards(plan);
+  const [plan, src, drums] = await Promise.all([cachedCardPlan(issue.id), cachedCard1Sources(), cachedDrums(issue.id)]);
+  // Rule 11: ACSR drums the assembly card holds up (no flanges, BUY) – the Skip 10 line waits for them.
+  const waiting = new Map<string, number>();
+  for (const r of heldUp(drums.assembly, drums.stock)) if (r.held) waiting.set(`${r.prodOrder}|${r.usedOn}`, (waiting.get(`${r.prodOrder}|${r.usedOn}`) ?? 0) + r.drums);
+  const card = productionCards(plan, waiting, src.drums);
   const men = (name: string) => src.men.get(name) ?? null;
   const version = versionLabel(issue);
+  const prev = picked.issues.find((i) => i.id === issue.prevIssueId);
+  // Raw material the plan needs beyond the planning stock (also shown in the issue plan).
+  const short = card.rm.names.filter((n, i) => {
+    const stock = src.stock.get(n);
+    return stock !== undefined && card.rm.total[i] > stock;
+  });
 
   return (
     <CardShell active="/cards/production" picked={picked}>
@@ -65,11 +75,16 @@ export default async function ProductionCardsPage({ searchParams }: PageProps<"/
           facts={[
             ["Card period", card.period],
             ["Data", issue.s8PulledAt ? `Balances: SFG dashboard ${issue.s8PulledAt}; lots: Club & Run (${src.approvedLots} approved lots)` : `Sheet version “${issue.version}”, loaded ${loadedText(issue)}`],
+            !!prev && (["Revision", <span key="v"><b>{issueName(issue)} replaces {issueName(prev)}</b>{issue.issueNote ? ` – ${issue.issueNote}` : ""}</span>] as const),
             ["Machines", `${MACHINE_ORDER.length}, one card each, in process order`],
+            ["Bottleneck", <b key="v" className="load-bottleneck">{card.bottleneck}</b>],
+            ["Finish date (bottleneck's last planned day)", <b key="v">{card.finish}</b>],
             ["Job lines checked", <b key="v">{card.cover.jobLines}</b>],
             ["Feed ready a day ahead or in stock", <b key="v">{card.cover.feedReady}</b>],
+            ["Same day – no margin", card.cover.sameDay ? <b key="v" className="sec">{card.cover.sameDay}</b> : <b key="v">0</b>],
             ["Feed missing", card.cover.feedMissing ? <b key="v" className="sec">{card.cover.feedMissing}</b> : <b key="v">0</b>],
-            ["Need drums from the yard", card.cover.needDrums ? <span key="v"><b className="sec">{card.cover.needDrums}</b> ACSR Raccoon lines on Skip 10</span> : <b key="v">0</b>],
+            ["Raw material short", short.length ? <span key="v" className="sec">{short.join(" · ")}</span> : <b key="v">None</b>],
+            ["Need drums from the yard", card.cover.needDrums ? <span key="v"><b className="sec">{card.cover.needDrums}</b> ACSR Raccoon lines on Skip 10{card.cover.waitingDrums ? <>, of which <b className="sec">{card.cover.waitingDrums}</b> waiting for drums</> : ""}</span> : <b key="v">0</b>],
             [
               "Not planned – to confirm",
               issue.notPlanned.length ? (
@@ -117,7 +132,7 @@ export default async function ProductionCardsPage({ searchParams }: PageProps<"/
                 <td>{m.info.group}</td>
                 <td className="num">{m.workingDays.size} of {WIN}</td>
                 <td className="num">{m.planned}</td>
-                <td className={m.load.attention ? "sec" : undefined}>{m.load.short}</td>
+                <td className={m.load.tone === "normal" ? undefined : `load-${m.load.tone}`}>{m.load.short}</td>
                 <td className="num">{men(m.name) ?? TO_CONFIRM}</td>
               </tr>
             ))}
@@ -213,7 +228,7 @@ function MachinePage({ m, version, period, men }: { m: MachineCard; version: str
           ["Men needed", men === null ? TO_CONFIRM : `${men} in each shift · names are on the Labour Allocation Card`],
           ["Card period", period],
           ["Planned in this period", m.units.length ? <span key="v"><b>{m.planned}</b> on <b>{days}</b> of {WIN} days</span> : <span key="v"><b>{days}</b> of {WIN} days</span>],
-          ["Load", m.load.attention ? <span key="v"><Sec>{m.load.text}</Sec>{m.load.tail}</span> : m.load.text],
+          ["Load", m.load.tone === "normal" ? m.load.text : <span key="v"><span className={`load-${m.load.tone}`}>{m.load.text}</span>{m.load.tail}</span>],
           !!m.info.note && (["Note", m.info.note] as const),
         ]}
         right={
@@ -238,6 +253,11 @@ function MachinePage({ m, version, period, men }: { m: MachineCard; version: str
       {m.jobs.length > 0 && (
         <>
           <How><b>How to read the table:</b> one line = one job for one day. A date with several lines means several jobs that day, in the order shown. Words in <Sec>this colour</Sec> need attention.</How>
+          {m.jobs.some((j) => j.ask51) && (
+            <How>
+              <b>Small cable (up to 4C × 25) – lines in yellow. May these jobs go to Extruder 51? Tick and sign.</b> ☐ Yes &nbsp; ☐ No &nbsp;&nbsp; Signed: ____________ &nbsp; Date: ________
+            </How>
+          )}
           <h3>Jobs, day by day</h3>
           <table className="t">
             <Cols widths={[6, 10, 19, 9, 6, 9, 17, 24]} />
@@ -255,7 +275,7 @@ function MachinePage({ m, version, period, men }: { m: MachineCard; version: str
             </thead>
             <tbody>
               {m.jobs.map((j, i) => (
-                <tr key={i} className={j.first ? "dstart" : undefined}>
+                <tr key={i} className={[j.first && "dstart", j.ask51 && "ask51"].filter(Boolean).join(" ") || undefined}>
                   <td className="dt">{j.first && j.date}</td>
                   <td><div>{j.order}</div><div className="sm">{j.mc}</div></td>
                   <td>

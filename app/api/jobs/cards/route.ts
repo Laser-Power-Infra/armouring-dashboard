@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
+import { changedOutside } from "@/lib/cached";
 import { buildCards } from "@/lib/cards/load";
 
 // Scheduled card sync (documentation.md §8): syncs the source sheets into the database, then builds today's four
@@ -24,7 +25,7 @@ export function GET(req: Request) {
 export async function POST(req: Request) {
   if (!authorized(req)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
   try {
-    const r = await buildCards(db, { ifChanged: true });
+    const r = await buildCards(db, { ifChanged: true }).finally(changedOutside); // sheets may be stored even if a card fails
     // A card that could not be built still leaves the others issued; its reason is reported, not failed on.
     return Response.json({
       ok: true,

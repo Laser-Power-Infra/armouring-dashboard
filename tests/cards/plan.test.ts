@@ -21,9 +21,11 @@ const cable = (o: string) => [
 ];
 const bom = (sfgBom: string, material: string, kgPerKm: number) => ({ sfgBom, lineNo: 1.001, materialCode: material, material, kgPerKm });
 const tables = (over: Partial<Tables> = {}): Tables => ({
+  drums: [],
   lots: [{ lotNo: "PL-001", runOrder: 1, approvedByMd: true }, { lotNo: "PL-002", runOrder: 2, approvedByMd: false }],
   orders: [order("P726Y-00001")],
   lines: cable("P726Y-00001"),
+  sfgOrders: [],
   bom: [bom("I300", "LT XLPE", 130), bom("I150", "LT XLPE", 80), bom("INN", "PVC COMPOUND 1.48", 100), bom("ARM", "STEEL STRIP 4*0.80 MM (IS)", 875), bom("FIN", "HDPE COMPOUND (B)", 150)],
   rm: [],
   men: [],
@@ -60,20 +62,59 @@ describe("Card 1 plan", () => {
     const t = tables({ orders: [order("P726Y-00001"), ...skipped, order("P726Y-00007")], lines: [...cable("P726Y-00001"), ...skipped.flatMap((o) => cable(o.prodOrder))] });
     const plan = planCard1(t, "2026-11-20");
     expect([...new Set(plan.rows.map((r) => r.prodOrder))]).toEqual(["P726Y-00001"]);
-    expect(plan.notPlanned).toEqual([]);
+    // Only the standing note on drum size is left: no order is reported.
+    expect(plan.notPlanned.filter((n) => n.startsWith("P7"))).toEqual([]);
   });
 
-  it("makes conductor on the machine of its size and lists a size with no machine", () => {
+  it("plans an approved lot only once it is sent to the plant (plan 1.5)", () => {
+    const held = tables({ lots: [{ lotNo: "PL-001", runOrder: 1, approvedByMd: true, sentToPlant: false }] });
+    expect(planCard1(held, "2026-11-20").rows).toEqual([]);
+    expect(planCard1(tables({ lots: [{ lotNo: "PL-001", runOrder: 1, approvedByMd: true, sentToPlant: true }] }), "2026-11-20").rows.length).toBeGreaterThan(0);
+  });
+  it("makes conductor on the machine of its size; 16, 50, 95 and sizes with no machine go to confirm", () => {
     const lines = [
+      line("P726Y-00001", "CONDUCTOR", "C70", "70 SQ. MM. SHAPED CONDUCTOR", 4, 0),
       line("P726Y-00001", "CONDUCTOR", "C95", "95 SQ. MM. SHAPED CONDUCTOR", 4, 0),
       line("P726Y-00001", "CONDUCTOR", "C10", "10 SQ. MM. COMPACT CONDUCTOR", 4, 0),
-      line("P726Y-00001", "INSULATION", "I95", "95 SQ. MM. SHAPED INSULATION", 4, 0),
-      line("P726Y-00001", "LAYING", "LAY", "4 CORE X 95 SQ. MM. (LAID)", 1, 0),
+      line("P726Y-00001", "INSULATION", "I70", "70 SQ. MM. SHAPED INSULATION", 4, 0),
+      line("P726Y-00001", "LAYING", "LAY", "4 CORE X 70 SQ. MM. (LAID)", 1, 0),
     ];
-    const plan = planCard1(tables({ orders: [order("P726Y-00001", { cores: 4, sizeSqmm: 95 })], lines }), "2026-11-20");
+    const plan = planCard1(tables({ orders: [order("P726Y-00001", { cores: 4, sizeSqmm: 70 })], lines }), "2026-11-20");
     expect(plan.rows[0]).toMatchObject({ machine: "Skip (12+7)-1", process: "Skip strander", qty: 4, job: "Conductor", feed: "Aluminium wire drawn on WD14" });
-    expect(plan.rows[1]).toMatchObject({ day: "2026-11-21", machine: "Extruder 22", qty: 4, feed: "Conductor: from Skip (12+7)-1 on 20 Nov" });
-    expect(plan.notPlanned).toEqual(["P726Y-00001 (Adani): 10 sq mm conductor, 4 core km – machine to confirm"]);
+    expect(plan.rows[1]).toMatchObject({ day: "2026-11-21", machine: "Extruder 35", qty: 4, feed: "Conductor: from Skip (12+7)-1 on 20 Nov" });
+    expect(plan.rows.some((r) => r.machine === "Skip 10")).toBe(false);
+    expect(plan.notPlanned).toEqual(expect.arrayContaining([
+      "P726Y-00001 (Adani): 95 sq mm conductor, 4 core km – machine to confirm",
+      "P726Y-00001 (Adani): 10 sq mm conductor, 4 core km – machine to confirm",
+    ]));
+  });
+
+  it("puts HT conductor below 300 sq mm on MS-14, and covered conductor of 100 sq mm on MS-18 only", () => {
+    const hl = (o: string, stage: string, code: string, item: string) => line(o, stage, code, item, 10, 0, { scope: "Core for Poly Park (P1)", fgType: "HT POWER CABLE - ARD" });
+    const cc = (stage: string, code: string, item: string) => line("P726Y-00020", stage, code, item, 10, 0, { fgType: "COVERED CONDUCTOR" });
+    const plan = planCard1(
+      tables({
+        orders: [order("P126Y-00185"), order("P726Y-00020", { cable: "100 SQ. MM. COVERED CONDUCTOR", cores: null, sizeSqmm: null })],
+        lines: [hl("P126Y-00185", "CONDUCTOR", "HC", "185 SQ. MM. COMPACT CONDUCTOR"), hl("P126Y-00185", "INSULATION", "HI", "185 SQ. MM. CORE INSULATED 33kv (SIO)"), cc("CONDUCTOR", "CC", "100 SQ. MM. COVERED CONDUCTOR"), cc("INSULATION", "CI", "100 SQ. MM. COVERED CONDUCTOR INSULATED")],
+      }),
+      "2026-11-20",
+    );
+    expect(plan.rows.find((r) => r.prodOrder === "P126Y-00185")).toMatchObject({ machine: "MS-14", job: "HT conductor" });
+    const ccRows = plan.rows.filter((r) => r.prodOrder === "P726Y-00020");
+    expect(ccRows.some((r) => r.machine === "Skip 11")).toBe(false);
+    expect(ccRows[0]).toMatchObject({ machine: "MS-18", job: "Covered conductor", feed: "Aluminium wire drawn on WD14" });
+  });
+
+  it("puts all sheathing on Extruder 52 and asks about small cable going to Extruder 51", () => {
+    const o = "P726Y-00030";
+    const lines = [
+      line(o, "LAYING", "LAY", "4 CORE X 25 SQ. MM. (LAID)", 5, 5),
+      line(o, "INNER", "INN", "4 CORE X 25 SQ. MM. INNER SHEATHED", 5, 0),
+    ];
+    const plan = planCard1(tables({ orders: [order(o, { cores: 4, sizeSqmm: 25 })], lines }), "2026-11-20");
+    const inner = plan.rows.filter((r) => /Inner sheath/.test(r.job));
+    expect(inner.length).toBeGreaterThan(0);
+    expect(inner.every((r) => r.machine === "Extruder 52" && r.job === "Inner sheath – may go to Extruder 51?")).toBe(true);
   });
 
   it("makes only conductor and insulation of an HT order, and ACSR on Skip 10 with drums from day 3", () => {

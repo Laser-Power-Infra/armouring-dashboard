@@ -1,4 +1,5 @@
 import { Prisma } from "../generated/prisma/client.ts";
+import { SUPPLY_FROM } from "../club/club.ts";
 
 // The whitelist. Table names, column names and SQL sources reach the database only from this file;
 // request input is only ever matched against it and bound as values.
@@ -21,7 +22,11 @@ export type ColumnDef = {
   array?: boolean;
   /** How a number is shown: km with two decimals, a whole number, or bobbins still to wind. */
   format?: "km" | "int" | "toWind";
+  /** Editable by an admin through a dropdown of these values (a bool column: "true" / "false"). */
+  edit?: readonly string[];
 };
+
+const YES_NO_EDIT = ["true", "false"] as const;
 
 export type TableScope = { machine: string; /** first shift day of the latest-entries window */ since: Date };
 
@@ -146,8 +151,8 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "balanceKm", label: "Balance to finish km", kind: "number", format: "km" },
       { key: "conductorPending", label: "Conductor pending core km", kind: "number", format: "km" },
       { key: "insulationPending", label: "Insulation pending core km", kind: "number", format: "km" },
-      { key: "approvedByMd", label: "Approved by MD", kind: "bool" },
-      { key: "sentToPlant", label: "Sent to plant", kind: "bool" },
+      { key: "approvedByMd", label: "Approved by MD", kind: "bool", edit: YES_NO_EDIT },
+      { key: "sentToPlant", label: "Sent to plant", kind: "bool", edit: YES_NO_EDIT },
       { key: "status", label: "Status", kind: "text" },
       { key: "remarks", label: "Remarks", kind: "text", search: true },
     ],
@@ -165,7 +170,8 @@ export const TABLES: Record<TableName, TableDef> = {
              conductor_bal_core_km AS "conductorBal", insulation_bal_core_km AS "insulationBal", laying_bal_km AS "layingBal",
              inner_bal_km AS "innerBal", armouring_bal_km AS "armouringBal", finish_bal_km AS "finishBal",
              pending_from AS "pendingFrom", lot_no AS "lotNo", run_order_in_lot AS "runOrderInLot", remarks,
-             supply_from AS "supplyFrom", suggested_lot AS "suggestedLot"
+             supply_from AS "supplyFrom", suggested_lot AS "suggestedLot", to_confirm::text AS "toConfirm",
+             on_hold AS "onHold", urgent, to_char(customer_date, 'YYYY-MM-DD') AS "customerDate", to_char(promised_on, 'YYYY-MM-DD') AS "promisedOn"
       FROM kgp_orders) t`,
     columns: [
       { key: "prodOrder", label: "Order", kind: "text", search: true },
@@ -188,8 +194,13 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "lotNo", label: "Lot", kind: "text", search: true },
       { key: "runOrderInLot", label: "Run order", kind: "number", format: "int" },
       { key: "remarks", label: "Remarks", kind: "text", search: true },
-      { key: "supplyFrom", label: "Supply from", kind: "text" },
+      { key: "supplyFrom", label: "Supply from", kind: "text", edit: SUPPLY_FROM },
       { key: "suggestedLot", label: "Suggested lot", kind: "text", search: true },
+      { key: "toConfirm", label: "To confirm (SFG figures)", kind: "text" },
+      { key: "onHold", label: "On hold", kind: "bool" },
+      { key: "urgent", label: "Urgent", kind: "bool" },
+      { key: "customerDate", label: "Customer date", kind: "day" },
+      { key: "promisedOn", label: "Promised FG", kind: "day" },
     ],
     defaultOrder: Prisma.sql`"lotNo" ASC NULLS LAST, "runOrderInLot" ASC NULLS LAST`,
     defaultSort: null,
@@ -201,5 +212,5 @@ export const TABLES: Record<TableName, TableDef> = {
 export const isTableName = (s: string): s is TableName => (TABLE_NAMES as readonly string[]).includes(s);
 
 /** What the browser needs to draw the table. No SQL crosses to the client. */
-export type ClientColumn = Pick<ColumnDef, "key" | "label" | "kind" | "format">;
-export const clientColumns = (def: TableDef): ClientColumn[] => def.columns.map(({ key, label, kind, format }) => ({ key, label, kind, format }));
+export type ClientColumn = Pick<ColumnDef, "key" | "label" | "kind" | "format" | "edit">;
+export const clientColumns = (def: TableDef): ClientColumn[] => def.columns.map(({ key, label, kind, format, edit }) => ({ key, label, kind, format, edit }));

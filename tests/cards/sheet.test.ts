@@ -61,9 +61,9 @@ describe("card sheet parsing", () => {
     expect(assembly[0]).toMatchObject({ assembleBy: "2026-11-17", was: "2026-11-13", drums: 4, flangesNeeded: 8, usedOn: "2026-11-17" });
     const stock = parseDrumStock(fixture("drum-stock"));
     expect(stock).toHaveLength(10);
-    expect(stock.find((s) => s.sizeKey === sizeKey("60×30×32×3 (250 m packing)"))).toMatchObject({ drums: 8, flangesKgp: 330, flangesPp: 186 });
-    expect(stock.find((s) => s.sizeKey === sizeKey("70×35×38×3"))).toMatchObject({ drums: null, flangesKgp: 0 });
-    expect(stock.find((s) => s.sizeKey === sizeKey("43 X 15 X 23 X 2.25"))).toMatchObject({ flangesKgp: null });
+    expect(stock.find((s) => s.drumCode === sizeKey("60×30×32×3 (250 m packing)"))).toMatchObject({ drums: 8, flangesKgp: 330, flangesPp: 186 });
+    expect(stock.find((s) => s.drumCode === sizeKey("70×35×38×3"))).toMatchObject({ drums: null, flangesKgp: 0 });
+    expect(stock.find((s) => s.drumCode === sizeKey("43 X 15 X 23 X 2.25"))).toMatchObject({ flangesKgp: null });
   });
 
   it("reads a stock figure typed as text, and keeps an unfilled one unknown", () => {

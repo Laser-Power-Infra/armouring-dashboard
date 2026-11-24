@@ -1,8 +1,9 @@
+import { cachedDrums } from "@/lib/cached";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
-import { getDrums, versionLabel } from "@/lib/cards/data";
-import { drumChanges, drumAssemblyCard } from "@/lib/cards/drums";
-import { ActionHead, Calendar, CardShell, Cols, How, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { versionLabel } from "@/lib/cards/data";
+import { drumChanges, drumAssemblyCard, versus } from "@/lib/cards/drums";
+import { ActionHead, Calendar, CardShell, Cols, How, loadedText, pickIssue, Sec, Sheet, Swatch, Top } from "../_parts";
+import { DrumChangesPage, VsCell } from "../_drum-changes";
 
 // Card 4, KGP Drum Assembly Card (build spec 9): what cannot be made yet, then which drums to make day by day.
 export const instant = false;
@@ -12,7 +13,7 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
   const picked = await pickIssue(searchParams);
   if (!picked) return <CardShell active="/cards/drum-assembly" picked={null} />;
   const { issue } = picked;
-  const { need, assembly, stock } = await getDrums(db, issue.id);
+  const { need, assembly, stock } = await cachedDrums(issue.id);
   // Nothing to show: the drum sheets could not be read when this version was built.
   if (!need.length)
     return (
@@ -24,12 +25,16 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
       </CardShell>
     );
   const prev = picked.issues.find((i) => i.id === issue.prevIssueId);
-  const changes = prev && drumChanges(issue, prev, need, (await getDrums(db, prev.id)).need);
+  const prevDrums = prev ? await cachedDrums(prev.id) : null;
+  const changes = prev && prevDrums && drumChanges(issue, prev, need, prevDrums.need);
   const card = drumAssemblyCard(assembly, stock, issue.d0, need);
   const f = card.facts;
+  // Rule 32: drums to make per order and use date in the issue this one replaces.
+  const prevMake = prevDrums && new Map(drumAssemblyCard(prevDrums.assembly, prevDrums.stock, prev!.d0, prevDrums.need).rows.map((r) => [r.key, r.drums]));
 
   return (
     <CardShell active="/cards/drum-assembly" picked={picked} variant="drums">
+      {changes && <DrumChangesPage changes={changes} version={versionLabel(issue)} card="KGP Drum Assembly Card" />}
       <Sheet>
         <Top
           version={versionLabel(issue)}
@@ -44,6 +49,8 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
             ["Held up", f.heldUp ? <span key="v"><b className="sec">{f.heldUp}</b> – see the table below</span> : <b key="v">0</b>],
             ["Already late", f.late ? <span key="v"><b className="sec">{f.late}</b> – make these first, listed under {f.d0}</span> : <b key="v">0</b>],
             ["Not listed here", "Drums already in stock"],
+            ["Stock", `Drum Stock sheet (complete drums, Kharagpur and Poly Park flanges), read ${loadedText(issue)}`],
+            ["Flanges", <span key="v">2 per drum: Kharagpur first, then Poly Park, then <b className="sec">BUY</b></span>],
             ["Every day", "Write the number made in the “Done” column"],
           ]}
           right={
@@ -55,34 +62,13 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
               />
               <div className="leg">
                 <div>Big number = drums to be made by that date</div>
-                <div><Swatch tone="work" />All can be made &nbsp;&nbsp;<Swatch tone="shortd" />Some held up (no flanges or size not known)</div>
+                <div><Swatch tone="work" />All can be made &nbsp;&nbsp;<Swatch tone="shortd" />Some held up (no flanges)</div>
                 <div><Swatch tone="idle" />Nothing to make &nbsp;&nbsp;<Swatch tone="out" />Outside this card</div>
               </div>
             </>
           }
         />
         <How><b>How to read this card:</b> this page shows the totals and what is held up. The next pages list, day by day, which drums to make. “Make by” is the date the drum must be ready. Words in <Sec>this colour</Sec> need attention.</How>
-        {changes && (
-          <>
-            <How><b>{changes.name} replaces {changes.prevName}:</b> {changes.note} Drums to assemble up to {changes.upTo}: {changes.toMake} ({changes.prevName}: {changes.prevToMake}). The table compares with {changes.prevName}.</How>
-            <table className="t">
-              <Cols widths={[36, 24, 20, 20]} />
-              <thead>
-                <tr><th>Order</th><th>Drum size</th><th>{changes.prevName} – to assemble</th><th>{changes.name} – to assemble</th></tr>
-              </thead>
-              <tbody>
-                {changes.rows.map((r) => (
-                  <tr key={r.order}>
-                    <td>{r.order}</td>
-                    <td>{r.known ? r.size : <Sec>{r.size}</Sec>}</td>
-                    <td>{r.prev}</td>
-                    <td>{r.now}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
         {card.cannot.length > 0 && (
           <>
             <ActionHead title="Cannot be made yet" cardFor="Srikant Rao" />
@@ -93,11 +79,11 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
               </thead>
               <tbody>
                 {card.cannot.map((r) => (
-                  <tr key={r.size}>
+                  <tr key={r.code}>
                     <td><b>{r.known ? r.size : <Sec>{r.size}</Sec>}</b></td>
                     <td className="num">{r.drums}</td>
                     <td className="sec">{r.problem}</td>
-                    <td>{r.todo}</td>
+                    <td className={r.buy > 0 ? "sec" : undefined}>{r.todo}</td>
                   </tr>
                 ))}
               </tbody>
@@ -106,7 +92,7 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
         )}
         <h3 className="pb">Day by day: which drums to make</h3>
         <table className="t">
-          <Cols widths={[9, 19, 7, 7, 16, 20, 14, 8]} />
+          <Cols widths={prevMake ? [9, 17, 7, 7, 15, 18, 13, 7, 7] : [9, 19, 7, 7, 16, 20, 14, 8]} />
           <thead>
             <tr>
               <th>Make by</th>
@@ -116,6 +102,7 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
               <th>Flanges from</th>
               <th>For which order<div className="ths">order number and lot below</div></th>
               <th>Drum is used on</th>
+              {prevMake && <th>vs {changes!.prevName}</th>}
               <th>Done<div className="ths">write number made</div></th>
             </tr>
           </thead>
@@ -132,6 +119,7 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
                 <td>{r.held ? <Sec>{r.flangesFrom}</Sec> : r.flangesFrom}</td>
                 <td><div>{r.partyCable}</div><div className="sm">{r.orderLot}</div></td>
                 <td>{r.usedOn}</td>
+                {prevMake && <VsCell text={versus(prevMake, r.key, r.drums)!} />}
                 <td></td>
               </tr>
             ))}
@@ -140,7 +128,7 @@ export default async function DrumAssemblyCardPage({ searchParams }: PageProps<"
               <td></td>
               <td className="num">{card.total.drums}</td>
               <td className="num">{card.total.flanges}</td>
-              <td colSpan={4}></td>
+              <td colSpan={prevMake ? 5 : 4}></td>
             </tr>
           </tbody>
         </table>
